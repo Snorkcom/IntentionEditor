@@ -984,7 +984,7 @@ const STRINGS = {
         summary: "Краткое описание",
         description: "Полное описание",
         oocInfo: "Out Of Character информация",
-        copyableText: "Copyable text",
+        copyableText: "Материалы намерения (копируемый текст)",
         hiddenLabel: "Скрытое название",
         color: "Цвет",
         author: "Автор",

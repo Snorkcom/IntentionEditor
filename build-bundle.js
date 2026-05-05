@@ -4,7 +4,9 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname);
 const sources = [
   "js/constants.js",
+  "js/data/catalog-data.js",
   "js/catalogs.js",
+  "js/data/ui-strings.js",
   "js/i18n.js",
   "js/utils.js",
   "js/draft.js",
@@ -20,8 +22,9 @@ const footer = `\n})();\n`;
 
 function transformModule(code) {
   return code
-    .replace(/^\s*import\s+\{[\s\S]*?\}\s+from\s+["'][^"']+["'];?\s*$/gm, "")
+    .replace(/^\s*import\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?\s*$/gm, "")
     .replace(/^\s*import\s+[^;]+;\s*$/gm, "")
+    .replace(/^\s*export\s+\{[^}]*\}\s+from\s+["'][^"']+["'];?\s*$/gm, "")
     .replace(/\bexport\s+function\s+/g, "function ")
     .replace(/\bexport\s+const\s+/g, "const ")
     .replace(/\bexport\s+let\s+/g, "let ")

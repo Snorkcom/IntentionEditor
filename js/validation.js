@@ -181,6 +181,44 @@ function validatePredicateValueTypes(issues, locale, path, predicate, fieldDefin
   }
 }
 
+function validatePredicateNumericBounds(issues, locale, path, predicate, fieldDefinition) {
+  if (!Number.isFinite(fieldDefinition.min) || !["int", "map-int"].includes(fieldDefinition.type)) {
+    return;
+  }
+
+  const min = fieldDefinition.min;
+  const numericEntries = [
+    { path: `${path}.value`, value: predicate.value },
+    { path: `${path}.valueFrom`, value: predicate.valueFrom },
+    { path: `${path}.valueTo`, value: predicate.valueTo }
+  ];
+
+  for (const entry of numericEntries) {
+    if (!nonEmpty(entry.value)) {
+      continue;
+    }
+
+    const number = Number(entry.value);
+    if (Number.isFinite(number) && number < min) {
+      addIssue(issues, "error", entry.path, "predicate-min-value", issueText(locale, "predicateMinValue", { min }));
+    }
+  }
+
+  if (Array.isArray(predicate.values)) {
+    for (const value of predicate.values) {
+      if (!nonEmpty(value)) {
+        continue;
+      }
+
+      const number = Number(value);
+      if (Number.isFinite(number) && number < min) {
+        addIssue(issues, "error", `${path}.values`, "predicate-min-value", issueText(locale, "predicateMinValue", { min }));
+        break;
+      }
+    }
+  }
+}
+
 function validatePredicateIdentifiers(issues, locale, path, predicate, fieldDefinition) {
   const values = [];
   if (nonEmpty(predicate.key)) {
@@ -258,6 +296,7 @@ function validatePredicate(issues, locale, path, predicate, context) {
 
   validatePredicateShape(issues, locale, path, predicate, fieldDefinition);
   validatePredicateValueTypes(issues, locale, path, predicate, fieldDefinition);
+  validatePredicateNumericBounds(issues, locale, path, predicate, fieldDefinition);
   validatePredicateIdentifiers(issues, locale, path, predicate, fieldDefinition);
   validateCompareTo(issues, locale, path, predicate, context);
 }

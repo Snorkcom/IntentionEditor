@@ -1,4 +1,4 @@
-import { LOCALE_STORAGE_KEY, STORAGE_KEY } from "./constants.js";
+import { LOCALE_STORAGE_KEY, STORAGE_KEY, THEME_STORAGE_KEY } from "./constants.js";
 import { DEFAULT_LOCALE, normalizeLocale } from "./i18n.js";
 import { normalizeDraft } from "./draft.js";
 
@@ -46,5 +46,23 @@ export function saveLocale(locale) {
     window.localStorage.setItem(LOCALE_STORAGE_KEY, normalizeLocale(locale));
   } catch (error) {
     console.warn("Failed to save IntentionEditor locale:", error);
+  }
+}
+
+export function loadTheme() {
+  try {
+    const value = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return value === "dark" ? "dark" : "light";
+  } catch (error) {
+    console.warn("Failed to load IntentionEditor theme:", error);
+    return "light";
+  }
+}
+
+export function saveTheme(theme) {
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme === "dark" ? "dark" : "light");
+  } catch (error) {
+    console.warn("Failed to save IntentionEditor theme:", error);
   }
 }

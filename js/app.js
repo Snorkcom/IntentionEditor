@@ -32,7 +32,7 @@ import {
 } from "./draft.js";
 import { buildExportArtifacts, getLocKeysForIntentions } from "./exporters.js";
 import { getLocaleLabel, getLocalizedText, t } from "./i18n.js";
-import { clearDraft, loadDraft, loadLocale, saveDraft, saveLocale } from "./storage.js";
+import { clearDraft, loadDraft, loadLocale, loadTheme, saveDraft, saveLocale, saveTheme } from "./storage.js";
 import {
   escapeHtml,
   nonEmpty,
@@ -72,6 +72,15 @@ const MODAL_TYPES = {
   rules: "rules",
   categories: "categories"
 };
+
+const INTENTION_CONTENT_FIELDS = [
+  "name",
+  "summary",
+  "description",
+  "oocInfo",
+  "copyableText",
+  "hiddenLabel"
+];
 
 function localized(locale, value) {
   return getLocalizedText(locale, value);
@@ -129,8 +138,21 @@ function secondarySlotTitle(locale, index) {
 }
 
 function renderHelpIcon(text) {
+  if (!text) {
+    return "";
+  }
+
   return `
     <span class="help-icon" tabindex="0" aria-label="${escapeHtml(text)}" data-tooltip="${escapeHtml(text)}">?</span>
+  `;
+}
+
+function renderFieldLabel(label, helpText = "") {
+  return `
+    <span class="field-label">
+      ${escapeHtml(label)}
+      ${renderHelpIcon(helpText)}
+    </span>
   `;
 }
 
@@ -199,13 +221,17 @@ function createActionStatus(locale, key, params = {}, tone = "ok") {
 export function mountApp(root) {
   const initialLocale = loadLocale();
   const initialDraft = loadDraft(initialLocale) ?? createEmptyDraft(initialLocale);
+  const initialTheme = loadTheme();
 
   const state = {
     locale: initialLocale,
+    theme: initialTheme,
     draft: normalizeDraft(initialDraft, initialLocale),
     validation: validateDraft(initialDraft, initialLocale),
     artifacts: buildExportArtifacts(initialDraft),
     actionStatus: null,
+    intentionClipboard: null,
+    categoryDropdownOpen: false,
     modal: null
   };
 
@@ -282,6 +308,7 @@ export function mountApp(root) {
   function recalculate({ save = true, actionStatus = null, normalizeTagBuffers = false } = {}) {
     const focusSnapshot = captureFocusSnapshot();
     state.draft.ownerSlot.intentionId = state.draft.ownerIntention.id;
+    synchronizeLinkedIntentions();
     state.draft.lastUpdatedAt = new Date().toISOString();
     synchronizeDraftTags({ normalizeBuffers: normalizeTagBuffers });
     state.validation = validateDraft(state.draft, state.locale);
@@ -300,6 +327,12 @@ export function mountApp(root) {
     recalculate({ save: true });
   }
 
+  function setTheme(nextTheme) {
+    state.theme = nextTheme === "dark" ? "dark" : "light";
+    saveTheme(state.theme);
+    render();
+  }
+
   function resetDraft() {
     clearDraft();
     state.draft = createEmptyDraft(state.locale);
@@ -313,6 +346,34 @@ export function mountApp(root) {
 
   function findSecondaryIntention(uid) {
     return state.draft.secondaryIntentions.find(item => item.uid === uid) ?? null;
+  }
+
+  function findLinkedIntention(slot) {
+    if (!slot) {
+      return null;
+    }
+    return state.draft.secondaryIntentions.find(item => item.uid === slot.linkedIntentionUid)
+      ?? state.draft.secondaryIntentions.find(item => item.id === slot.intentionId)
+      ?? null;
+  }
+
+  function synchronizeLinkedIntentions() {
+    const used = new Set();
+    for (const slot of state.draft.secondarySlots) {
+      let intention = findLinkedIntention(slot);
+      if (!intention || used.has(intention.uid)) {
+        intention = state.draft.secondaryIntentions.find(item => !used.has(item.uid)) ?? null;
+      }
+      if (!intention) {
+        intention = createSecondaryIntention(state.locale);
+        state.draft.secondaryIntentions.push(intention);
+      }
+      slot.linkedIntentionUid = intention.uid;
+      slot.intentionId = intention.id;
+      used.add(intention.uid);
+    }
+
+    state.draft.secondaryIntentions = state.draft.secondaryIntentions.filter(intention => used.has(intention.uid));
   }
 
   function findSlot(ownerKind, uid) {
@@ -578,6 +639,32 @@ export function mountApp(root) {
     }
   }
 
+  async function copyBindingToken(ownerKind, ownerUid, uid) {
+    const binding = findBinding(ownerKind, ownerUid, uid);
+    const parameter = nonEmpty(binding?.parameter);
+    if (!parameter) {
+      recalculate({
+        save: false,
+        actionStatus: createActionStatus(state.locale, "ui.copyPaste.bindingTokenEmpty", {}, "warning")
+      });
+      return;
+    }
+
+    try {
+      const token = `{$${parameter}}`;
+      await navigator.clipboard.writeText(token);
+      recalculate({
+        save: false,
+        actionStatus: createActionStatus(state.locale, "ui.copyPaste.bindingTokenCopied", { token })
+      });
+    } catch {
+      recalculate({
+        save: false,
+        actionStatus: createActionStatus(state.locale, "ui.export.copyFailed", {}, "error")
+      });
+    }
+  }
+
   function handleClick(event) {
     const target = event.target;
     if (!(target instanceof Element)) {
@@ -594,16 +681,42 @@ export function mountApp(root) {
           render();
         }
       }
+      if (state.categoryDropdownOpen && !target.closest("[data-category-picker]")) {
+        state.categoryDropdownOpen = false;
+        render();
+      }
       return;
     }
 
     const action = button.dataset.action;
+    if (
+      state.categoryDropdownOpen &&
+      action !== "toggle-category-dropdown" &&
+      action !== "set-category" &&
+      !button.closest("[data-category-picker]")
+    ) {
+      state.categoryDropdownOpen = false;
+    }
+
     switch (action) {
       case "reset-draft":
         resetDraft();
         return;
       case "set-locale":
         setLocale(button.dataset.locale);
+        return;
+      case "set-theme":
+        setTheme(button.dataset.theme);
+        return;
+      case "toggle-category-dropdown":
+        state.categoryDropdownOpen = !state.categoryDropdownOpen;
+        render();
+        return;
+      case "set-category":
+        withMutation(() => {
+          state.draft.scenario.category = button.dataset.categoryId;
+          state.categoryDropdownOpen = false;
+        });
         return;
       case "open-modal":
         state.modal = button.dataset.modal;
@@ -615,23 +728,14 @@ export function mountApp(root) {
         return;
       case "add-secondary-intention":
         withMutation(() => {
-          state.draft.secondaryIntentions.push(createSecondaryIntention(state.locale));
+          const intention = createSecondaryIntention(state.locale);
+          const slot = createSecondarySlot(intention.uid);
+          slot.intentionId = intention.id;
+          state.draft.secondaryIntentions.push(intention);
+          state.draft.secondarySlots.push(slot);
         });
         return;
       case "delete-secondary-intention":
-        withMutation(() => {
-          const uid = button.dataset.uid;
-          const intention = findSecondaryIntention(uid);
-          if (!intention) {
-            return;
-          }
-          state.draft.secondaryIntentions = state.draft.secondaryIntentions.filter(item => item.uid !== uid);
-          state.draft.secondarySlots.forEach(slot => {
-            if (slot.intentionId === intention.id) {
-              slot.intentionId = "";
-            }
-          });
-        });
         return;
       case "add-global-predicate":
         withMutation(() => {
@@ -645,10 +749,17 @@ export function mountApp(root) {
         return;
       case "add-slot":
         withMutation(() => {
-          state.draft.secondarySlots.push(createSecondarySlot());
+          const intention = createSecondaryIntention(state.locale);
+          const slot = createSecondarySlot(intention.uid);
+          slot.intentionId = intention.id;
+          state.draft.secondaryIntentions.push(intention);
+          state.draft.secondarySlots.push(slot);
         });
         return;
       case "delete-slot":
+        if (!window.confirm(t(state.locale, "ui.confirmDeleteSlot"))) {
+          return;
+        }
         withMutation(() => {
           const slotUid = button.dataset.uid;
           const slot = findSlot("slot", slotUid);
@@ -657,6 +768,7 @@ export function mountApp(root) {
           }
 
           state.draft.secondarySlots = state.draft.secondarySlots.filter(item => item.uid !== slotUid);
+          state.draft.secondaryIntentions = state.draft.secondaryIntentions.filter(item => item.uid !== slot.linkedIntentionUid);
           const removedSlotId = slot.slotId;
           for (const current of getAllSlots(state.draft)) {
             if (current.bindToSlot === removedSlotId) {
@@ -676,6 +788,41 @@ export function mountApp(root) {
             });
           }
         });
+        return;
+      case "copy-intention-content":
+        {
+          const intention = button.dataset.entity === "owner-intention"
+            ? state.draft.ownerIntention
+            : findSecondaryIntention(button.dataset.uid);
+          if (!intention) {
+            return;
+          }
+          state.intentionClipboard = Object.fromEntries(INTENTION_CONTENT_FIELDS.map(field => [field, intention[field] ?? ""]));
+          recalculate({
+            save: false,
+            actionStatus: createActionStatus(state.locale, "ui.copyPaste.copied")
+          });
+        }
+        return;
+      case "paste-intention-content":
+        {
+          if (!state.intentionClipboard) {
+            return;
+          }
+          withMutation(() => {
+            const intention = button.dataset.entity === "owner-intention"
+              ? state.draft.ownerIntention
+              : findSecondaryIntention(button.dataset.uid);
+            if (!intention) {
+              return;
+            }
+            for (const field of INTENTION_CONTENT_FIELDS) {
+              intention[field] = state.intentionClipboard[field] ?? "";
+            }
+          }, {
+            actionStatus: createActionStatus(state.locale, "ui.copyPaste.pasted")
+          });
+        }
         return;
       case "add-slot-predicate":
         withMutation(() => {
@@ -717,6 +864,9 @@ export function mountApp(root) {
           }
           slot.textParameterBindings = slot.textParameterBindings.filter(item => item.uid !== button.dataset.uid);
         });
+        return;
+      case "copy-binding-token":
+        copyBindingToken(button.dataset.ownerKind, button.dataset.ownerUid, button.dataset.uid);
         return;
       case "toggle-allow-same-actor":
         withMutation(() => {
@@ -805,18 +955,14 @@ export function mountApp(root) {
   }
 
   function renderTopBar() {
+    const draftTitle = nonEmpty(state.draft.scenario.name) || state.draft.scenario.id || t(state.locale, "ui.untitledDraft");
     return `
-      <header class="hero">
-        <div>
-          <p class="eyebrow">${escapeHtml(t(state.locale, "ui.eyebrow"))}</p>
-          <h1>${escapeHtml(APP_TITLE)}</h1>
-          <p class="hero-copy">${escapeHtml(t(state.locale, "ui.hero"))}</p>
+      <header class="app-topbar">
+        <div class="brand-row">
+          <strong>${escapeHtml(APP_TITLE)}</strong>
+          <span>${escapeHtml(draftTitle)}</span>
         </div>
-        <div class="hero-actions">
-          <div class="topbar-controls">
-            <button type="button" data-action="open-modal" data-modal="${MODAL_TYPES.rules}">${escapeHtml(t(state.locale, "ui.rules"))}</button>
-            <button type="button" data-action="open-modal" data-modal="${MODAL_TYPES.categories}">${escapeHtml(t(state.locale, "ui.categories"))}</button>
-          </div>
+        <div class="topbar-actions">
           <div class="locale-switch" aria-label="${escapeHtml(t(state.locale, "ui.locale"))}">
             ${["ru", "en"].map(locale => `
               <button
@@ -825,6 +971,17 @@ export function mountApp(root) {
                 data-action="set-locale"
                 data-locale="${locale}">
                 ${escapeHtml(getLocaleLabel(locale))}
+              </button>
+            `).join("")}
+          </div>
+          <div class="locale-switch" aria-label="${escapeHtml(t(state.locale, "ui.theme"))}">
+            ${["light", "dark"].map(theme => `
+              <button
+                type="button"
+                class="${theme === state.theme ? "is-active" : ""}"
+                data-action="set-theme"
+                data-theme="${theme}">
+                ${escapeHtml(t(state.locale, `ui.themes.${theme}`))}
               </button>
             `).join("")}
           </div>
@@ -890,6 +1047,23 @@ export function mountApp(root) {
     `;
   }
 
+  function renderValidationPanel() {
+    return `
+      <section class="editor-section validation-section">
+        <div class="section-header">
+          <div>
+            <h2>${escapeHtml(t(state.locale, "ui.validationExportTitle"))}</h2>
+            <p>${escapeHtml(t(state.locale, "ui.validationExportDescription"))}</p>
+          </div>
+        </div>
+        <div class="bottom-grid">
+          ${renderStatusPanel()}
+          ${renderIssuePanel()}
+        </div>
+      </section>
+    `;
+  }
+
   function renderTextField({
     entity,
     field,
@@ -906,7 +1080,8 @@ export function mountApp(root) {
     ownerKind = "",
     ownerUid = "",
     disabled = false,
-    dataListId = ""
+    dataListId = "",
+    help = ""
   }) {
     const counter = counterMax > 0 ? renderCounter(`${value ?? ""}`.length, counterMax) : "";
     const commonAttrs = `
@@ -928,7 +1103,7 @@ export function mountApp(root) {
 
     return `
       <label class="field">
-        <span>${escapeHtml(label)}</span>
+        ${renderFieldLabel(label, help)}
         ${control}
         ${renderHint(hint, counter)}
       </label>
@@ -983,7 +1158,7 @@ export function mountApp(root) {
 
     return `
       <div class="field">
-        <span>${escapeHtml(fieldText(state.locale, "values"))}</span>
+        ${renderFieldLabel(fieldText(state.locale, "values"), hintText(state.locale, "values"))}
         <div class="inline-editor">
           ${inputControl}
           <button
@@ -1059,7 +1234,7 @@ export function mountApp(root) {
 
     return `
       <label class="field">
-        <span>${escapeHtml(fieldText(state.locale, "value"))}</span>
+        ${renderFieldLabel(fieldText(state.locale, "value"), hintText(state.locale, "value"))}
         ${valueControl}
       </label>
     `;
@@ -1070,7 +1245,7 @@ export function mountApp(root) {
     return `
       <div class="field-grid two">
         <label class="field">
-          <span>${escapeHtml(fieldText(state.locale, "valueFrom"))}</span>
+          ${renderFieldLabel(fieldText(state.locale, "valueFrom"), hintText(state.locale, "valueFrom"))}
           <input
             type="${type}"
             value="${escapeHtml(predicate.valueFrom)}"
@@ -1081,7 +1256,7 @@ export function mountApp(root) {
             data-field="valueFrom">
         </label>
         <label class="field">
-          <span>${escapeHtml(fieldText(state.locale, "valueTo"))}</span>
+          ${renderFieldLabel(fieldText(state.locale, "valueTo"), hintText(state.locale, "valueTo"))}
           <input
             type="${type}"
             value="${escapeHtml(predicate.valueTo)}"
@@ -1101,7 +1276,7 @@ export function mountApp(root) {
 
     return `
       <label class="field">
-        <span>${escapeHtml(label)}</span>
+        ${renderFieldLabel(label, hintText(state.locale, "key"))}
         <select
           data-entity="predicate"
           data-owner-kind="${ownerKind}"
@@ -1133,7 +1308,7 @@ export function mountApp(root) {
       const compareOptions = getSlotsForSelection(currentSlotId);
       return `
         <label class="field">
-          <span>${escapeHtml(fieldText(state.locale, "compareSlot"))}</span>
+          ${renderFieldLabel(fieldText(state.locale, "compareSlot"), hintText(state.locale, "compareSlot"))}
           <select
             data-entity="predicate"
             data-owner-kind="${ownerKind}"
@@ -1178,16 +1353,12 @@ export function mountApp(root) {
       label: operatorLabel(state.locale, operator)
     }));
     const fieldDefinition = getFieldDefinition(predicate.scope, predicate.field);
-    const fieldHelp = predicate.scope === PREDICATE_SCOPES.round
-      ? hintText(state.locale, "globalPredicates")
-      : hintText(state.locale, "candidatePredicates");
 
     return `
       <section class="predicate-card">
         <div class="subsection-header tight">
           <div>
             <strong>${escapeHtml(title)}</strong>
-            <p>${escapeHtml(fieldHelp)}</p>
           </div>
           <button
             type="button"
@@ -1201,7 +1372,7 @@ export function mountApp(root) {
 
         <div class="field-grid two">
           <label class="field">
-            <span>${escapeHtml(fieldText(state.locale, "field"))}</span>
+            ${renderFieldLabel(fieldText(state.locale, "field"), hintText(state.locale, "field"))}
             <select
               data-entity="predicate"
               data-owner-kind="${ownerKind}"
@@ -1212,7 +1383,7 @@ export function mountApp(root) {
             </select>
           </label>
           <label class="field">
-            <span>${escapeHtml(state.locale === "ru" ? "Оператор" : "Operator")}</span>
+            ${renderFieldLabel(t(state.locale, "ui.fields.operator"), hintText(state.locale, "operator"))}
             <select
               data-entity="predicate"
               data-owner-kind="${ownerKind}"
@@ -1229,7 +1400,7 @@ export function mountApp(root) {
     `;
   }
 
-  function renderBindingCard(binding, ownerKind, ownerUid) {
+  function renderBindingCard(binding, ownerKind, ownerUid, index) {
     const slotOptions = getSlotsForSelection(findSlot(ownerKind, ownerUid)?.slotId ?? "");
     const sourceOptions = Object.values(TEXT_BINDING_SOURCES).map(source => ({
       id: source,
@@ -1239,23 +1410,40 @@ export function mountApp(root) {
       ? ROUND_TEXT_BINDING_FIELDS.map(field => ({ id: field.id, label: localized(state.locale, field.label) }))
       : TEXT_BINDING_FIELDS.map(field => ({ id: field.id, label: localized(state.locale, field.label) }));
 
+    const token = nonEmpty(binding.parameter) ? `{$${nonEmpty(binding.parameter)}}` : "";
+
     return `
-      <section class="subcard">
+      <section class="subcard text-binding-card">
         <div class="subsection-header tight">
-          <strong>${escapeHtml(fieldText(state.locale, "textBindings"))}</strong>
-          <button
-            type="button"
-            data-action="delete-binding"
-            data-owner-kind="${ownerKind}"
-            data-owner-uid="${ownerUid}"
-            data-uid="${binding.uid}">
-            ${escapeHtml(t(state.locale, "ui.delete"))}
-          </button>
+          <div>
+            <strong>${escapeHtml(t(state.locale, "ui.textParameterTitle", { index: index + 1 }))}</strong>
+            ${token ? `<code>${escapeHtml(token)}</code>` : ""}
+          </div>
+          <div class="button-row">
+            <button
+              type="button"
+              data-action="copy-binding-token"
+              data-owner-kind="${ownerKind}"
+              data-owner-uid="${ownerUid}"
+              data-uid="${binding.uid}"
+              title="${escapeHtml(token || t(state.locale, "ui.copyPaste.bindingTokenEmpty"))}"
+              ${token ? "" : "disabled"}>
+              ${escapeHtml(t(state.locale, "ui.copyPaste.copyBindingToken"))}
+            </button>
+            <button
+              type="button"
+              data-action="delete-binding"
+              data-owner-kind="${ownerKind}"
+              data-owner-uid="${ownerUid}"
+              data-uid="${binding.uid}">
+              ${escapeHtml(t(state.locale, "ui.delete"))}
+            </button>
+          </div>
         </div>
 
         <div class="field-grid four">
           <label class="field">
-            <span>${escapeHtml(fieldText(state.locale, "parameter"))}</span>
+            ${renderFieldLabel(fieldText(state.locale, "parameter"), hintText(state.locale, "parameter"))}
             <input
               type="text"
               value="${escapeHtml(binding.parameter)}"
@@ -1265,10 +1453,9 @@ export function mountApp(root) {
               data-uid="${binding.uid}"
               data-field="parameter"
               placeholder="${escapeHtml(placeholderText(state.locale, "bindingParam"))}">
-            ${renderHint(hintText(state.locale, "parameter"))}
           </label>
             <label class="field">
-              <span>${escapeHtml(fieldText(state.locale, "source"))} ${renderHelpIcon(localized(state.locale, SOURCE_HELP_TEXT))}</span>
+              ${renderFieldLabel(fieldText(state.locale, "source"), localized(state.locale, SOURCE_HELP_TEXT))}
               <select
                 data-entity="binding"
                 data-owner-kind="${ownerKind}"
@@ -1280,7 +1467,7 @@ export function mountApp(root) {
           </label>
           ${binding.source === TEXT_BINDING_SOURCES.slot ? `
             <label class="field">
-              <span>${escapeHtml(fieldText(state.locale, "slot"))}</span>
+              ${renderFieldLabel(fieldText(state.locale, "slot"), hintText(state.locale, "slot"))}
               <select
                 data-entity="binding"
                 data-owner-kind="${ownerKind}"
@@ -1296,7 +1483,7 @@ export function mountApp(root) {
           ` : ""}
           ${binding.source === TEXT_BINDING_SOURCES.literal ? `
             <label class="field">
-              <span>${escapeHtml(fieldText(state.locale, "value"))}</span>
+              ${renderFieldLabel(fieldText(state.locale, "value"), hintText(state.locale, "value"))}
               <input
                 type="text"
                 value="${escapeHtml(binding.value)}"
@@ -1309,7 +1496,7 @@ export function mountApp(root) {
             </label>
           ` : `
             <label class="field">
-              <span>${escapeHtml(fieldText(state.locale, "field"))}</span>
+              ${renderFieldLabel(fieldText(state.locale, "field"), hintText(state.locale, "field"))}
               <select
                 data-entity="binding"
                 data-owner-kind="${ownerKind}"
@@ -1325,7 +1512,11 @@ export function mountApp(root) {
     `;
   }
 
-function renderIntentionEditor(intention, entity, title, description, canDelete = false) {
+function renderIntentionEditor(intention, entity, title, description, {
+    canDelete = false,
+    slot = null,
+    slotOwnerKind = ""
+  } = {}) {
     const locale = state.locale;
     const uid = entity === "secondary-intention" ? intention.uid : "";
     const sectionClass = entity === "owner-intention"
@@ -1335,6 +1526,11 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
       { id: VISIBILITY_TYPES.visible, label: localized(locale, VISIBILITY_LABELS.visible) },
       { id: VISIBILITY_TYPES.hidden, label: localized(locale, VISIBILITY_LABELS.hidden) }
     ];
+    const revealOptions = [
+      { id: REVEAL_TYPES.none, label: localized(locale, REVEAL_LABELS.none) },
+      { id: REVEAL_TYPES.timer, label: localized(locale, REVEAL_LABELS.timer) }
+    ];
+    const slotUid = slot?.uid ?? "";
 
     return `
       <section class="${sectionClass}">
@@ -1343,11 +1539,33 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
             <h2>${escapeHtml(title)}</h2>
             <p>${escapeHtml(description)}</p>
           </div>
-          ${canDelete ? `
-            <button type="button" data-action="delete-secondary-intention" data-uid="${uid}">
-              ${escapeHtml(t(locale, "ui.delete"))}
+          <div class="button-row">
+            <button
+              type="button"
+              data-action="copy-intention-content"
+              data-entity="${entity}"
+              data-uid="${uid}">
+              ${escapeHtml(t(locale, "ui.copyPaste.copy"))}
             </button>
-          ` : ""}
+            <button
+              type="button"
+              data-action="paste-intention-content"
+              data-entity="${entity}"
+              data-uid="${uid}"
+              ${state.intentionClipboard ? "" : "disabled"}>
+              ${escapeHtml(t(locale, "ui.copyPaste.paste"))}
+            </button>
+            ${canDelete ? `
+              <button type="button" data-action="delete-slot" data-uid="${slotUid}">
+                ${escapeHtml(t(locale, "ui.delete"))}
+              </button>
+            ` : ""}
+          </div>
+        </div>
+
+        <div class="intention-tabs" aria-label="${escapeHtml(t(locale, "ui.intentionTabs"))}">
+          <button type="button" class="is-active">${escapeHtml(t(locale, "ui.intentionTabOne"))}</button>
+          <button type="button" disabled>${escapeHtml(t(locale, "ui.intentionTabsFuture"))}</button>
         </div>
 
         <div class="field-grid two">
@@ -1388,6 +1606,7 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
             value: intention.summary,
             label: fieldText(locale, "summary"),
             hint: hintText(locale, "summary35"),
+            help: hintText(locale, "summaryTooltip"),
             maxLength: TEXT_LIMITS.summary,
             counterMax: TEXT_LIMITS.summary
           })}
@@ -1400,7 +1619,9 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
           value: intention.description,
           label: fieldText(locale, "description"),
           hint: hintText(locale, "description2000"),
-          rows: 4
+          rows: 5,
+          maxLength: TEXT_LIMITS.description,
+          counterMax: TEXT_LIMITS.description
         })}
         ${renderTextField({
           entity,
@@ -1409,7 +1630,10 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
           value: intention.oocInfo,
           label: fieldText(locale, "oocInfo"),
           hint: hintText(locale, "ooc500"),
-          rows: 3
+          help: hintText(locale, "oocInfoTooltip"),
+          rows: 3,
+          maxLength: TEXT_LIMITS.oocInfo,
+          counterMax: TEXT_LIMITS.oocInfo
         })}
         ${renderTextField({
           entity,
@@ -1418,37 +1642,78 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
           value: intention.copyableText,
           label: fieldText(locale, "copyableText"),
           hint: hintText(locale, "copy5000"),
-          rows: 4,
+          help: hintText(locale, "copyableTextTooltip"),
+          rows: 8,
           maxLength: TEXT_LIMITS.copyableText,
           counterMax: TEXT_LIMITS.copyableText
         })}
 
-        <div class="field-grid three">
-          <label class="field">
-            <span>${escapeHtml(fieldText(locale, "visibility"))}</span>
-            <select data-entity="${entity}" data-uid="${uid}" data-field="defaultVisibility">
-              ${renderSelectOptions(locale, visibilityOptions, intention.defaultVisibility)}
-            </select>
-          </label>
+        <div class="subsection visibility-combo">
+          <div class="subsection-header tight">
+            <strong>${escapeHtml(t(locale, "ui.visibilityAndReveal"))}</strong>
+          </div>
+          <div class="field-grid four">
+            <label class="field">
+              ${renderFieldLabel(fieldText(locale, "visibility"), hintText(locale, "defaultVisibility"))}
+              <select data-entity="${entity}" data-uid="${uid}" data-field="defaultVisibility">
+                ${renderSelectOptions(locale, visibilityOptions, intention.defaultVisibility)}
+              </select>
+            </label>
+            ${renderTextField({
+              entity,
+              uid,
+              field: "hiddenLabel",
+              value: intention.hiddenLabel,
+              label: fieldText(locale, "hiddenLabel"),
+              hint: hintText(locale, "hidden45"),
+              help: hintText(locale, "hiddenLabelTooltip"),
+              maxLength: TEXT_LIMITS.hiddenLabel,
+              counterMax: TEXT_LIMITS.hiddenLabel
+            })}
+            ${slot ? `
+              <label class="check-row">
+                <input
+                  type="checkbox"
+                  data-entity="${slotOwnerKind}"
+                  data-uid="${slotUid}"
+                  data-field="visibilityEnabled"
+                  data-value-type="checkbox"
+                  ${slot.visibilityEnabled ? "checked" : ""}>
+                <span>${escapeHtml(fieldText(locale, "visibilityOverride"))}</span>
+              </label>
+              <label class="field">
+                ${renderFieldLabel(fieldText(locale, "visibilityOverride"), hintText(locale, "visibilityOverride"))}
+                <select
+                  data-entity="${slotOwnerKind}"
+                  data-uid="${slotUid}"
+                  data-field="visibilityType"
+                  ${slot.visibilityEnabled ? "" : "disabled"}>
+                  ${renderSelectOptions(locale, visibilityOptions, slot.visibilityType)}
+                </select>
+              </label>
+              <label class="field">
+                <span>${escapeHtml(fieldText(locale, "reveal"))} ${renderHelpIcon(hintText(locale, "reveal"))}</span>
+                <select
+                  data-entity="${slotOwnerKind}"
+                  data-uid="${slotUid}"
+                  data-field="revealType"
+                  ${slot.visibilityEnabled && slot.visibilityType === VISIBILITY_TYPES.hidden ? "" : "disabled"}>
+                  ${renderSelectOptions(locale, revealOptions, slot.revealType)}
+                </select>
+              </label>
           ${renderTextField({
-            entity,
-            uid,
-            field: "hiddenLabel",
-            value: intention.hiddenLabel,
-            label: fieldText(locale, "hiddenLabel"),
-            hint: hintText(locale, "hidden45"),
-            maxLength: TEXT_LIMITS.hiddenLabel,
-            counterMax: TEXT_LIMITS.hiddenLabel
-          })}
-          ${renderTextField({
-            entity,
-            uid,
-            field: "creationDate",
-            value: intention.creationDate,
-            label: fieldText(locale, "creationDate"),
-            hint: hintText(locale, "date"),
-            placeholder: "2026-04-30"
-          })}
+            entity: slotOwnerKind,
+            uid: slotUid,
+            field: "revealMinutes",
+            value: slot.revealMinutes,
+                label: fieldText(locale, "revealMinutes"),
+                hint: hintText(locale, "revealMinutes"),
+                type: "number",
+                valueType: "number",
+                disabled: !(slot.visibilityEnabled && slot.visibilityType === VISIBILITY_TYPES.hidden && slot.revealType === REVEAL_TYPES.timer)
+              })}
+            ` : ""}
+          </div>
         </div>
 
         <div class="field-grid two">
@@ -1458,15 +1723,23 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
             field: "tagsInput",
             value: intention.tagsInput ?? "",
             label: fieldText(locale, "tags"),
-            hint: hintText(locale, "tags")
+            hint: hintText(locale, "tags"),
+            help: ""
           })}
           ${renderColorField(entity, "color", intention.color, uid)}
         </div>
 
+        ${renderTextField({
+          entity,
+          uid,
+          field: "creationDate",
+          value: intention.creationDate,
+          label: fieldText(locale, "creationDate"),
+          hint: hintText(locale, "date"),
+          placeholder: "2026-04-30"
+        })}
+
         <div class="subsection">
-          <div class="subsection-header tight">
-            <strong>${escapeHtml(fieldText(locale, "addIcon"))}</strong>
-          </div>
           <label class="check-row">
             <input
               type="checkbox"
@@ -1484,6 +1757,7 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
               field: "iconSprite",
               value: intention.iconSprite,
               label: fieldText(locale, "iconSprite"),
+              help: hintText(locale, "iconSprite"),
               disabled: !intention.iconEnabled,
               placeholder: placeholderText(locale, "iconSprite")
             })}
@@ -1493,6 +1767,7 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
               field: "iconState",
               value: intention.iconState,
               label: fieldText(locale, "iconState"),
+              help: hintText(locale, "iconState"),
               disabled: !intention.iconEnabled,
               placeholder: placeholderText(locale, "iconState")
             })}
@@ -1523,7 +1798,7 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
           </strong>
         </div>
         <div class="field-grid three">
-          <label class="check-row">
+          <label class="check-row check-row-centered">
             <input
               type="checkbox"
               data-entity="${ownerKind}"
@@ -1576,11 +1851,8 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
     const sectionClass = isOwnerSlot
       ? "editor-section slots-section owner-slot-section"
       : "editor-section slots-section secondary-slot-section";
-    const bindOptions = getSlotsForSelection(slot.slotId);
-    const allowOptions = getSlotsForSelection(slot.slotId);
-    const templateOptions = isOwnerSlot
-      ? [{ id: state.draft.ownerIntention.id, label: state.draft.ownerIntention.id }]
-      : getSecondaryIntentionOptions();
+    const bindOptions = isOwnerSlot ? [] : getSlotsForSelection(slot.slotId);
+    const allowOptions = isOwnerSlot ? [] : getSlotsForSelection(slot.slotId);
     const slotDisabledByBind = nonEmpty(slot.bindToSlot);
 
     return `
@@ -1597,7 +1869,7 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
           ` : ""}
         </div>
 
-        <div class="field-grid four">
+        <div class="field-grid three">
           ${renderTextField({
             entity: ownerKind,
             uid,
@@ -1605,34 +1877,24 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
             value: slot.slotId,
             label: fieldText(locale, "slotId"),
             hint: hintText(locale, "slotId"),
+            help: "",
             disabled: isOwnerSlot
           })}
-          <label class="field">
-            <span>${escapeHtml(fieldText(locale, "intentionTemplate"))}</span>
-            <select
-              data-entity="${ownerKind}"
-              data-uid="${uid}"
-              data-field="intentionId"
-              ${isOwnerSlot ? "disabled" : ""}>
-              ${renderSelectOptions(locale, templateOptions, slot.intentionId, {
-                allowEmpty: !isOwnerSlot,
-                emptyLabel: placeholderText(locale, "selectTemplate")
-              })}
-            </select>
-          </label>
-          <label class="field">
-            <span>${escapeHtml(fieldText(locale, "bindToSlot"))} ${renderHelpIcon(hintText(locale, "bindToSlot"))}</span>
-            <select
-              data-entity="${ownerKind}"
-              data-uid="${uid}"
-              data-field="bindToSlot">
-              ${renderSelectOptions(locale, bindOptions, slot.bindToSlot, {
-                allowEmpty: true,
-                emptyLabel: selectText(locale, "noBind")
-              })}
-            </select>
-          </label>
-          <label class="check-row">
+          ${isOwnerSlot ? "" : `
+            <label class="field">
+              ${renderFieldLabel(fieldText(locale, "bindToSlot"), hintText(locale, "bindToSlot"))}
+              <select
+                data-entity="${ownerKind}"
+                data-uid="${uid}"
+                data-field="bindToSlot">
+                ${renderSelectOptions(locale, bindOptions, slot.bindToSlot, {
+                  allowEmpty: true,
+                  emptyLabel: selectText(locale, "noBind")
+                })}
+              </select>
+            </label>
+          `}
+          <label class="check-row check-row-centered">
             <input
               type="checkbox"
               data-entity="${ownerKind}"
@@ -1641,11 +1903,11 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
               data-value-type="checkbox"
               ${slot.required ? "checked" : ""}
               ${isOwnerSlot ? "disabled" : ""}>
-            <span>${escapeHtml(fieldText(locale, "required"))}</span>
+            ${renderFieldLabel(fieldText(locale, "required"), hintText(locale, "required"))}
           </label>
         </div>
 
-        <div class="subsection">
+        ${isOwnerSlot ? "" : `<div class="subsection">
           <div class="subsection-header tight">
             <strong>${escapeHtml(fieldText(locale, "allowSameActorAs"))} ${renderHelpIcon(hintText(locale, "allowSameActorAs"))}</strong>
           </div>
@@ -1666,7 +1928,7 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
                 </label>
               `).join("")}
           </div>
-        </div>
+        </div>`}
 
         <div class="subsection">
           <div class="subsection-header">
@@ -1680,10 +1942,11 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
               ${escapeHtml(buttonText(locale, "addCandidatePredicate"))}
             </button>
           </div>
+          <p class="muted-text">${escapeHtml(hintText(locale, "candidatePredicates"))}</p>
           ${slotDisabledByBind
             ? `<p class="muted-text">${escapeHtml(hintText(locale, "bindToSlot"))}</p>`
             : slot.candidatePredicates.length === 0
-              ? `<p class="muted-text">${escapeHtml(t(locale, "ui.noIssues"))}</p>`
+              ? `<p class="muted-text">${escapeHtml(t(locale, "ui.emptySection"))}</p>`
               : slot.candidatePredicates.map((predicate, index) =>
                 renderPredicateCard(predicate, ownerKind, uid, predicateTitle(locale, index + 1))).join("")}
         </div>
@@ -1700,21 +1963,15 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
             </button>
           </div>
           ${slot.textParameterBindings.length === 0
-            ? `<p class="muted-text">${escapeHtml(t(locale, "ui.noIssues"))}</p>`
-            : slot.textParameterBindings.map(binding => renderBindingCard(binding, ownerKind, uid)).join("")}
+            ? `<p class="muted-text">${escapeHtml(t(locale, "ui.emptySection"))}</p>`
+            : slot.textParameterBindings.map((binding, index) => renderBindingCard(binding, ownerKind, uid, index)).join("")}
         </div>
-
-        ${renderVisibilityEditor(slot, ownerKind)}
       </section>
     `;
   }
 
   function renderScenarioSection() {
     const locale = state.locale;
-    const categoryOptions = CATEGORY_CATALOG.map(category => ({
-      id: category.id,
-      label: `${localized(locale, category.title)} · ${category.id}`
-    }));
 
     return `
       <section class="editor-section scenario-section">
@@ -1725,63 +1982,66 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
           </div>
         </div>
 
-        <div class="field-grid four">
-          ${renderTextField({
-            entity: "scenario",
-            field: "id",
-            value: state.draft.scenario.id,
-            label: fieldText(locale, "scenarioId"),
-            hint: hintText(locale, "scenarioId"),
-            placeholder: placeholderText(locale, "scenarioId")
-          })}
-          ${renderTextField({
-            entity: "scenario",
-            field: "name",
-            value: state.draft.scenario.name,
-            label: fieldText(locale, "humanName"),
-            hint: hintText(locale, "humanName"),
-            placeholder: placeholderText(locale, "scenarioName")
-          })}
-          <label class="field">
-            <span>${escapeHtml(fieldText(locale, "category"))}</span>
-            <select data-entity="scenario" data-field="category">
-              ${renderSelectOptions(locale, categoryOptions, state.draft.scenario.category)}
-            </select>
-            ${renderHint(hintText(locale, "category"))}
-          </label>
-          <label class="field">
-            <span>${escapeHtml(fieldText(locale, "weight"))}</span>
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value="${escapeHtml(state.draft.scenario.weight)}"
-              data-entity="scenario"
-              data-field="weight"
-              data-value-type="number">
-            ${renderHint(hintText(locale, "weight"))}
-          </label>
-        </div>
+        <div class="scenario-grid">
+          <div class="subsection flat">
+            <div class="subsection-header tight">
+              <strong>${escapeHtml(t(locale, "ui.scenarioCommon"))}</strong>
+            </div>
+            <div class="field-grid four">
+              ${renderTextField({
+                entity: "scenario",
+                field: "id",
+                value: state.draft.scenario.id,
+                label: fieldText(locale, "scenarioId"),
+                hint: hintText(locale, "scenarioId"),
+                help: "",
+                placeholder: placeholderText(locale, "scenarioId")
+              })}
+              ${renderTextField({
+                entity: "scenario",
+                field: "name",
+                value: state.draft.scenario.name,
+                label: fieldText(locale, "humanName"),
+                hint: hintText(locale, "humanName"),
+                placeholder: placeholderText(locale, "scenarioName")
+              })}
+              ${renderCategoryPicker()}
+              <label class="field">
+                <span>${escapeHtml(fieldText(locale, "weight"))}</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="${escapeHtml(state.draft.scenario.weight)}"
+                  data-entity="scenario"
+                  data-field="weight"
+                  data-value-type="number">
+                ${renderHint(hintText(locale, "weight"))}
+              </label>
+            </div>
 
-        <label class="check-row">
-          <input
-            type="checkbox"
-            data-entity="scenario"
-            data-field="enabled"
-            data-value-type="checkbox"
-            ${state.draft.scenario.enabled ? "checked" : ""}>
-          <span>${escapeHtml(fieldText(locale, "enabled"))}</span>
-        </label>
-
-        <div class="subsection">
-          <div class="subsection-header">
-            <strong>${escapeHtml(fieldText(locale, "globalPredicates"))} ${renderHelpIcon(hintText(locale, "globalPredicates"))}</strong>
-            <button type="button" data-action="add-global-predicate">${escapeHtml(buttonText(locale, "addGlobalPredicate"))}</button>
+            <label class="check-row">
+              <input
+                type="checkbox"
+                data-entity="scenario"
+                data-field="enabled"
+                data-value-type="checkbox"
+                ${state.draft.scenario.enabled ? "checked" : ""}>
+              ${renderFieldLabel(fieldText(locale, "enabled"), hintText(locale, "enabled"))}
+            </label>
           </div>
-          ${state.draft.globalPredicates.length === 0
-            ? `<p class="muted-text">${escapeHtml(hintText(locale, "globalPredicates"))}</p>`
-            : state.draft.globalPredicates.map((predicate, index) =>
-              renderPredicateCard(predicate, "global", "", predicateTitle(locale, index + 1))).join("")}
+
+          <div class="subsection">
+            <div class="subsection-header">
+              <strong>${escapeHtml(fieldText(locale, "globalPredicates"))} ${renderHelpIcon(hintText(locale, "globalPredicates"))}</strong>
+              <button type="button" data-action="add-global-predicate">${escapeHtml(buttonText(locale, "addGlobalPredicate"))}</button>
+            </div>
+            <p class="muted-text">${escapeHtml(hintText(locale, "globalPredicates"))}</p>
+            ${state.draft.globalPredicates.length === 0
+              ? `<p class="muted-text">${escapeHtml(t(locale, "ui.emptySection"))}</p>`
+              : state.draft.globalPredicates.map((predicate, index) =>
+                renderPredicateCard(predicate, "global", "", predicateTitle(locale, index + 1))).join("")}
+          </div>
         </div>
       </section>
     `;
@@ -1931,72 +2191,124 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
     return lists.join("");
   }
 
+  function renderCategoryPicker() {
+    const selectedCategory = CATEGORY_CATALOG.find(category => category.id === state.draft.scenario.category) ?? CATEGORY_CATALOG[0];
+    const selectedTitle = selectedCategory ? localized(state.locale, selectedCategory.title) : "";
+
+    return `
+      <div class="field category-field" data-category-picker="true">
+        ${renderFieldLabel(fieldText(state.locale, "category"), hintText(state.locale, "categoryTooltip"))}
+        <button
+          type="button"
+          class="category-trigger"
+          data-action="toggle-category-dropdown"
+          aria-haspopup="listbox"
+          aria-expanded="${state.categoryDropdownOpen ? "true" : "false"}">
+          <strong>${escapeHtml(selectedTitle)}</strong>
+          <span aria-hidden="true">v</span>
+        </button>
+        ${state.categoryDropdownOpen ? `
+          <div class="category-menu" role="listbox">
+            ${CATEGORY_CATALOG.map(category => `
+              <button
+                type="button"
+                class="category-option ${category.id === state.draft.scenario.category ? "is-active" : ""}"
+                data-action="set-category"
+                data-category-id="${escapeHtml(category.id)}"
+                role="option"
+                aria-selected="${category.id === state.draft.scenario.category ? "true" : "false"}">
+                <strong>${escapeHtml(localized(state.locale, category.title))}</strong>
+                <span>${escapeHtml(localized(state.locale, category.description))}</span>
+              </button>
+            `).join("")}
+          </div>
+        ` : ""}
+        ${renderHint(selectedCategory ? localized(state.locale, selectedCategory.description) : hintText(state.locale, "category"))}
+      </div>
+    `;
+  }
+
+  function renderOwnerPair() {
+    return `
+      <section class="slot-intention-pair owner-pair">
+        ${renderSlotEditor(
+          state.draft.ownerSlot,
+          "owner-slot",
+          t(state.locale, "ui.sections.ownerSlot"),
+          t(state.locale, "ui.sectionDescriptions.ownerSlot")
+        )}
+        ${renderIntentionEditor(
+          state.draft.ownerIntention,
+          "owner-intention",
+          t(state.locale, "ui.sections.ownerIntention"),
+          t(state.locale, "ui.sectionDescriptions.ownerIntention"),
+          {
+            slot: state.draft.ownerSlot,
+            slotOwnerKind: "owner-slot"
+          }
+        )}
+      </section>
+    `;
+  }
+
+  function renderSecondaryPairs() {
+    return `
+      <section class="section-group secondary-pairs-section">
+        <div class="section-header">
+          <div>
+            <h2>${escapeHtml(t(state.locale, "ui.sections.secondarySlots"))}</h2>
+            <p>${escapeHtml(t(state.locale, "ui.sectionDescriptions.secondarySlots"))}</p>
+          </div>
+          <button type="button" data-action="add-slot">${escapeHtml(buttonText(state.locale, "addSecondarySlot"))}</button>
+        </div>
+        ${state.draft.secondarySlots.length === 0
+          ? `<p class="muted-text">${escapeHtml(t(state.locale, "ui.noSecondaryPairs"))}</p>`
+          : state.draft.secondarySlots.map((slot, index) => {
+            const intention = findLinkedIntention(slot);
+            if (!intention) {
+              return "";
+            }
+            return `
+              <div class="slot-intention-pair">
+                ${renderSlotEditor(
+                  slot,
+                  "slot",
+                  secondarySlotTitle(state.locale, index + 1),
+                  t(state.locale, "ui.sectionDescriptions.secondarySlotPair"),
+                  false
+                )}
+                ${renderIntentionEditor(
+                  intention,
+                  "secondary-intention",
+                  secondaryTemplateTitle(state.locale, index + 1),
+                  t(state.locale, "ui.kinds.secondaryDescription"),
+                  {
+                    canDelete: true,
+                    slot,
+                    slotOwnerKind: "slot"
+                  }
+                )}
+              </div>
+            `;
+          }).join("")}
+      </section>
+    `;
+  }
+
   function render() {
     document.documentElement.lang = state.locale;
-    document.title = `${APP_TITLE} · ${getLocaleLabel(state.locale)}`;
+    document.documentElement.dataset.theme = state.theme;
+    document.title = `${APP_TITLE} - ${getLocaleLabel(state.locale)}`;
 
     root.innerHTML = `
       <div class="shell">
         ${renderTopBar()}
         <main class="layout">
-          <aside class="sidebar">
-            ${renderStatusPanel()}
-            ${renderIssuePanel()}
-          </aside>
-          <div class="content">
-            ${renderScenarioSection()}
-            ${renderIntentionEditor(
-              state.draft.ownerIntention,
-              "owner-intention",
-              t(state.locale, "ui.sections.ownerIntention"),
-              t(state.locale, "ui.sectionDescriptions.ownerIntention")
-            )}
-            <section class="section-group">
-              <div class="section-header">
-                <div>
-                  <h2>${escapeHtml(t(state.locale, "ui.sections.secondaryIntentions"))}</h2>
-                  <p>${escapeHtml(t(state.locale, "ui.sectionDescriptions.secondaryIntentions"))}</p>
-                </div>
-                <button type="button" data-action="add-secondary-intention">${escapeHtml(buttonText(state.locale, "addSecondaryTemplate"))}</button>
-              </div>
-                ${state.draft.secondaryIntentions.length === 0
-                  ? `<p class="muted-text">${escapeHtml(t(state.locale, "ui.noIssues"))}</p>`
-                  : state.draft.secondaryIntentions.map((intention, index) => renderIntentionEditor(
-                    intention,
-                    "secondary-intention",
-                    secondaryTemplateTitle(state.locale, index + 1),
-                    t(state.locale, "ui.kinds.secondaryDescription"),
-                    true
-                  )).join("")}
-              </section>
-            ${renderSlotEditor(
-              state.draft.ownerSlot,
-              "owner-slot",
-              t(state.locale, "ui.sections.ownerSlot"),
-              t(state.locale, "ui.sectionDescriptions.ownerSlot")
-            )}
-            <section class="section-group">
-              <div class="section-header">
-                <div>
-                  <h2>${escapeHtml(t(state.locale, "ui.sections.secondarySlots"))}</h2>
-                  <p>${escapeHtml(t(state.locale, "ui.sectionDescriptions.secondarySlots"))}</p>
-                </div>
-                <button type="button" data-action="add-slot">${escapeHtml(buttonText(state.locale, "addSecondarySlot"))}</button>
-              </div>
-                ${state.draft.secondarySlots.length === 0
-                  ? `<p class="muted-text">${escapeHtml(t(state.locale, "ui.noIssues"))}</p>`
-                  : state.draft.secondarySlots.map((slot, index) => renderSlotEditor(
-                    slot,
-                    "slot",
-                    secondarySlotTitle(state.locale, index + 1),
-                    state.locale === "ru"
-                      ? "Настройки конкретного secondary slot: связи, правила подбора, reveal и text bindings."
-                      : "Settings for this specific secondary slot: links, selection rules, reveal, and text bindings.",
-                    true
-                  )).join("")}
-            </section>
-            ${renderExportPanel()}
-          </div>
+          ${renderScenarioSection()}
+          ${renderOwnerPair()}
+          ${renderSecondaryPairs()}
+          ${renderValidationPanel()}
+          ${renderExportPanel()}
         </main>
         ${renderDataLists()}
         ${renderModal()}

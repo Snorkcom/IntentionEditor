@@ -4,10 +4,11 @@
 
 /* js/constants.js */
 const APP_TITLE = "IntentionEditor";
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.5.0";
 
 const STORAGE_KEY = "intention-editor.draft.v2";
 const LOCALE_STORAGE_KEY = "intention-editor.locale.v1";
+const THEME_STORAGE_KEY = "intention-editor.theme.v1";
 
 const PREDICATE_SCOPES = {
   round: "round",
@@ -72,7 +73,7 @@ const OPERATORS_BY_FIELD_TYPE = {
 };
 
 
-/* js/catalogs.js */
+/* js/data/catalog-data.js */
 const CATEGORY_CATALOG = [
   {
     id: "personal",
@@ -96,7 +97,8 @@ const CATEGORY_CATALOG = [
         "The character wants to lift the mood of the crew."
       ]
     }
-  },
+  }
+,
   {
     id: "social",
     title: {
@@ -282,6 +284,31 @@ const CATEGORY_CATALOG = [
     }
   }
 ];
+
+function humanizeDictionaryValue(value) {
+  return value
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .trim();
+}
+
+function buildDictionaryLabel(id, entry) {
+  if (!entry) {
+    return humanizeDictionaryValue(id) || id;
+  }
+
+  const english = entry.en ?? humanizeDictionaryValue(id) ?? id;
+  const russian = entry.ru;
+  if (!russian) {
+    return english;
+  }
+
+  return {
+    ru: `${id} · ${russian}`,
+    en: english
+  };
+}
 
 const VALUE_DICTIONARIES = {
   gameModes: [
@@ -612,7 +639,7 @@ const LOCALIZED_DICTIONARY_LABELS = {
     Borg: { ru: "Киборг", en: "Cyborg" },
     Botanist: { ru: "Ботаник", en: "Botanist" },
     Captain: { ru: "Капитан", en: "Captain" },
-    CargoTechnician: { ru: "Грузчик", en: "Cargo Technician" },
+    CargoTechnician: { ru: "Техник снабжения", en: "Cargo Technician" },
     CBURN: { ru: "Карантинный офицер ЦентКома", en: "CentComm Quarantine Officer" },
     CentralCommandOfficial: { ru: "Представитель ЦентКома", en: "CentComm Official" },
     Chaplain: { ru: "Священник", en: "Chaplain" },
@@ -645,13 +672,13 @@ const LOCALIZED_DICTIONARY_LABELS = {
     Reporter: { ru: "Репортёр", en: "Reporter" },
     ResearchAssistant: { ru: "Научный ассистент", en: "Research Assistant" },
     ResearchDirector: { ru: "Научный руководитель", en: "Research Director" },
-    SalvageSpecialist: { ru: "Утилизатор", en: "Salvage Specialist" },
+    SalvageSpecialist: { ru: "Специалист по утилизации", en: "Salvage Specialist" },
     Scientist: { ru: "Учёный", en: "Scientist" },
     SecurityCadet: { ru: "Кадет СБ", en: "Security Cadet" },
     SecurityOfficer: { ru: "Офицер СБ", en: "Security Officer" },
-    ServiceWorker: { ru: "Сервисный работник", en: "Service Worker" },
+    ServiceWorker: { ru: "Работник сервиса", en: "Service Worker" },
     StationAi: { ru: "ИИ станции", en: "Station AI" },
-    StationEngineer: { ru: "Инженер", en: "Station Engineer" },
+    StationEngineer: { ru: "Инженер станции", en: "Station Engineer" },
     TechnicalAssistant: { ru: "Технический ассистент", en: "Technical Assistant" },
     Visitor: { ru: "Посетитель", en: "Visitor" },
     Warden: { ru: "Смотритель", en: "Warden" }
@@ -665,7 +692,7 @@ const LOCALIZED_DICTIONARY_LABELS = {
     Medical: { ru: "Медицинский", en: "Medical" },
     Science: { ru: "Научный", en: "Science" },
     Security: { ru: "Служба безопасности", en: "Security" },
-    Silicon: { ru: "Синтетики", en: "Silicon" },
+    Silicon: { ru: "Кремниевые формы жизни", en: "Silicon" },
     Specific: { ru: "Станционный", en: "Station Specific" }
   },
   species: {
@@ -715,10 +742,10 @@ const LOCALIZED_DICTIONARY_LABELS = {
     Dragon: { ru: "Космический дракон", en: "Space Dragon" },
     GenericAntagonist: { ru: "Одиночный антагонист", en: "Solo Antagonist" },
     GenericFreeAgent: { ru: "Свободный агент", en: "Free Agent" },
-    GenericSiliconAntagonist: { ru: "Синтетик антагонист", en: "Silicon Antagonist" },
+    GenericSiliconAntagonist: { ru: "Кремниевый антагонист", en: "Silicon Antagonist" },
     GenericTeamAntagonist: { ru: "Командный антагонист", en: "Team Antagonist" },
     HeadRev: { ru: "Глава революции", en: "Head Revolutionary" },
-    InitialInfected: { ru: "Нулевой пациент", en: "Initial Infected" },
+    InitialInfected: { ru: "Первый заражённый", en: "Initial Infected" },
     MothershipCore: { ru: "Ядро ксеноборга", en: "Xenoborg Core" },
     Nukeops: { ru: "Ядерный оперативник", en: "Nuclear Operative" },
     NukeopsCommander: { ru: "Командир ядерных оперативников", en: "Nuclear Operative Commander" },
@@ -726,42 +753,19 @@ const LOCALIZED_DICTIONARY_LABELS = {
     ParadoxClone: { ru: "Парадоксальный клон", en: "Paradox Clone" },
     Rev: { ru: "Революционер", en: "Revolutionary" },
     SpaceNinja: { ru: "Космический ниндзя", en: "Space Ninja" },
-    SubvertedSilicon: { ru: "Взломанный синтетик", en: "Subverted Silicon" },
+    SubvertedSilicon: { ru: "Взломанный кремний", en: "Subverted Silicon" },
     Survivor: { ru: "Выживший", en: "Survivor" },
     Thief: { ru: "Вор", en: "Thief" },
     Traitor: { ru: "Предатель", en: "Traitor" },
     TraitorSleeper: { ru: "Спящий агент Синдиката", en: "Syndicate Sleeper Agent" },
-    Wizard: { ru: "Маг", en: "Wizard" },
+    Wizard: { ru: "Волшебник", en: "Wizard" },
     Xenoborg: { ru: "Ксеноборг", en: "Xenoborg" },
     Zombie: { ru: "Зомби", en: "Zombie" }
   }
 };
 
-function humanizeDictionaryValue(value) {
-  return value
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/_/g, " ")
-    .trim();
-}
 
-function buildDictionaryLabel(id, entry) {
-  if (!entry) {
-    return humanizeDictionaryValue(id) || id;
-  }
-
-  const english = entry.en ?? humanizeDictionaryValue(id) ?? id;
-  const russian = entry.ru;
-  if (!russian) {
-    return english;
-  }
-
-  return {
-    ru: `${id} · ${russian}`,
-    en: english
-  };
-}
-
+/* js/catalogs.js */
 const TEXT_BINDING_FIELDS = [
   { id: "characterName", label: { ru: "Имя персонажа", en: "Character name" } },
   { id: "job", label: { ru: "Профессия", en: "Job" } },
@@ -795,10 +799,12 @@ const FIELD_DEFINITIONS = {
     },
     crewCount: {
       type: "int",
+      min: 0,
       label: { ru: "Число членов экипажа", en: "Crew count" }
     },
     securityCount: {
       type: "int",
+      min: 0,
       label: { ru: "Число сотрудников СБ", en: "Security count" }
     },
     eventTags: {
@@ -808,24 +814,29 @@ const FIELD_DEFINITIONS = {
     },
     "antagSummary.totalCount": {
       type: "int",
+      min: 0,
       label: { ru: "Всего антагонистов", en: "Antag total count" }
     },
     "antagSummary.gameModeAntagCount": {
       type: "int",
+      min: 0,
       label: { ru: "Антагонисты режима", en: "Game-mode antag count" }
     },
     "antagSummary.ghostRoleAntagCount": {
       type: "int",
+      min: 0,
       label: { ru: "Ghost-role антагонисты", en: "Ghost-role antag count" }
     },
     "antagSummary.byRole": {
       type: "map-int",
+      min: 0,
       dictionary: "antagRoles",
       keyLabel: { ru: "ID antag role", en: "Antag role id" },
       label: { ru: "Антагонисты по ролям", en: "Antag count by role" }
     },
     "antagSummary.byObjectiveType": {
       type: "map-int",
+      min: 0,
       dictionary: "objectiveTypes",
       keyLabel: { ru: "ID objective type", en: "Objective type id" },
       label: { ru: "Антагонисты по типам целей", en: "Antag count by objective type" }
@@ -928,423 +939,519 @@ function getAllowedOperators(scope, field, options = {}) {
 }
 
 
-/* js/i18n.js */
-const SUPPORTED_LOCALES = ["ru", "en"];
-const DEFAULT_LOCALE = "ru";
-
+/* js/data/ui-strings.js */
 const STRINGS = {
-  ru: {
-    appTitle: APP_TITLE,
-    ui: {
-      eyebrow: "Конструктор сценариев",
-      hero: "Редактор пакета сценария: шаблон сценария, шалоны намерений, слоты, предикаты и экспорт в YAML + FTL.",
-      reset: "Сбросить черновик",
-      rules: "Быстрые правила",
-      categories: "Категории",
-      locale: "Язык",
-      close: "Закрыть",
-      add: "Добавить",
-      delete: "Удалить",
-      choose: "Выбери",
-      none: "Не использовать",
-      saveHint: "Автосохранение активно. Черновик хранится в localStorage браузера.",
-      statusOk: "Черновик проходит встроенную валидацию.",
-      statusTitle: "Статус",
-      issuesTitle: "Проблемы валидации",
-      errors: "Ошибки",
-      warnings: "Предупреждения",
-      secondaryTemplates: "Второстепенные шаблоны",
-      secondarySlots: "Второстепенные слоты",
-      noIssues: "Пока нет ошибок и предупреждений.",
-      modalRulesTitle: "Быстрые правила",
-      modalCategoriesTitle: "Категории сценариев",
-	  sections: {
-        scenario: "Шаблон сценария",
-        ownerIntention: "Основное намерение",
-        secondaryIntentions: "Второстепенное намерение",
-        ownerSlot: "Слот владельца сценария",
-        secondarySlots: "Второстепенные слоты",
-        export: "Экспорт"
+  "ru": {
+    "appTitle": "IntentionEditor",
+    "ui": {
+      "eyebrow": "Автономный статический редактор",
+      "hero": "Редактор пакета сценария: scenario template, intention templates, slots, predicates и экспорт в YAML + FTL.",
+      "reset": "Сбросить черновик",
+      "rules": "Быстрые правила",
+      "categories": "Категории",
+      "locale": "Язык",
+      "close": "Закрыть",
+      "add": "Добавить",
+      "delete": "Удалить",
+      "choose": "Выбери",
+      "none": "Не использовать",
+      "saveHint": "Автосохранение активно. Черновик хранится в localStorage браузера.",
+      "statusOk": "Ошибок в черновике не найдено.",
+      "statusTitle": "Статус",
+      "issuesTitle": "Ошибки валидации",
+      "errors": "Ошибки",
+      "warnings": "Предупреждения",
+      "secondaryTemplates": "Второстепенные намерения",
+      "secondarySlots": "Второстепенные слоты",
+      "noIssues": "Пока нет ошибок и предупреждений.",
+      "emptySection": "Отсутствуют.",
+      "modalRulesTitle": "Быстрые правила",
+      "modalCategoriesTitle": "Категории сценариев",
+      "sections": {
+        "scenario": "Шаблон сценария",
+        "ownerIntention": "Шаблон основного намерения",
+        "secondaryIntentions": "Шаблон намерения (второстепенные слоты)",
+        "ownerSlot": "Слот основного намерения (primary)",
+        "secondarySlots": "Слоты второстепенных намерений (secondary)",
+        "export": "Экспорт"
       },
-      sectionDescriptions: {
-        scenario: "scenarioTemplate. Метаданные сценария и глобальные предикаты.",
-        ownerIntention: "Основной шаблон намерения, всегда связанный с владельцем сценария (owner).",
-        secondaryIntentions: "Каталог второстепенных шаблонов намерений.",
-        ownerSlot: "Базовый основной слот для владельца сценария (primary).",
-        secondarySlots: "Структура сценария: связи со слотами, предикаты, видимость и текстовые параметры.",
-        export: "Предпросмотр и скачивание готовых YAML/FTL артефактов."
+      "sectionDescriptions": {
+        "scenario": "Метаданные сценария и глобальные предикаты раунда.",
+        "ownerIntention": "Обязательное намерение, которое всегда связано со слотом владельца сценария (owner).",
+        "secondaryIntentions": "Переиспользуемая библиотека второстепенных шаблонов намерений.",
+        "ownerSlot": "Основной слот владельца сценария (owner)",
+        "secondarySlots": "Слева отображаются второстепенные слоты, справа – связанные шаблоны намерений.",
+        "export": "Предварительный просмотр и загрузка готовых YAML/FTL-файлов",
+        "secondarySlotPair": "Настройка второстепенного слота: повторное использование, условия подбора кандидатов и параметры текста."
       },
-      fields: {
-        scenarioId: "Идентификатор",
-        humanName: "Техническое название",
-        category: "Категория",
-        weight: "Вес (weight)",
-        enabled: "Включено",
-        title: "Название",
-        summary: "Краткое описание",
-        description: "Полное описание",
-        oocInfo: "Out Of Character информация",
-        copyableText: "Материалы намерения (копируемый текст)",
-        hiddenLabel: "Скрытое название",
-        color: "Цвет",
-        author: "Автор",
-        creationDate: "Дата создания",
-        tags: "Теги",
-        iconSprite: "Иконка (icon sprite)",
-        iconState: "Состояние иконки (icon state)",
-        addIcon: "Добавить иконку",
-        templateId: "Идентификатор",
-        visibility: "Видимость",
-        slotId: "Идентификатор слота",
-        intentionTemplate: "Шаблон намерения",
-        required: "Обязательный",
-        bindToSlot: "Привязать к слоту (bindToSlot)",
-        allowSameActorAs: "Повторное использование кандидата (allowSameActorAs)",
-        candidatePredicates: "Предикаты кандидатов (candidate predicates)",
-        globalPredicates: "Глобальные предикаты (global predicates)",
-        textBindings: "Текстовые параметры",
-        visibilityOverride: "Раскрытие намерения",
-        reveal: "Тип раскрытия",
-        revealMinutes: "Минут до раскрытия",
-        compareSlot: "Сравнить слот с",
-        parameter: "Параметр",
-        source: "Источник",
-        slot: "Слот",
-        field: "Поле",
-        value: "Значение",
-        values: "Значения",
-        valueFrom: "От",
-        valueTo: "До",
-        key: "Ключ"
+      "fields": {
+        "scenarioId": "Scenario ID",
+        "humanName": "Техническое название",
+        "category": "Категория",
+        "weight": "Вес",
+        "enabled": "Включен",
+        "title": "Название",
+        "summary": "Краткое описание",
+        "description": "Полное описание",
+        "oocInfo": "Out Of Character информация",
+        "copyableText": "Материалы намерения",
+        "hiddenLabel": "Скрытое название",
+        "color": "Цвет",
+        "author": "Автор",
+        "creationDate": "Дата создания",
+        "tags": "Тэги",
+        "iconSprite": "Ссылка на иконку",
+        "iconState": "Состояние иконки",
+        "addIcon": "Добавить иконку",
+        "templateId": "Template ID",
+        "visibility": "Видимость по умолчанию",
+        "slotId": "Slot ID",
+        "intentionTemplate": "Шаблон намерения",
+        "required": "Обязательное",
+        "bindToSlot": "Привязать к слоту",
+        "allowSameActorAs": "Разрешить совпадение участника",
+        "candidatePredicates": "Условия кандидатов",
+        "globalPredicates": "Глобальные условия",
+        "textBindings": "Настройка текстовых параметров",
+        "visibilityOverride": "Изменение видимости",
+        "reveal": "Раскрыть содержимое",
+        "revealMinutes": "Время до показа (мин.)",
+        "compareSlot": "Сравнить с другим слотом",
+        "parameter": "Параметр",
+        "source": "Источник",
+        "slot": "Слот",
+        "field": "Поле",
+        "value": "Значение",
+        "values": "Значения",
+        "valueFrom": "От",
+        "valueTo": "До",
+        "key": "Ключ",
+        "operator": "Оператор"
       },
-      fieldHints: {
-        scenarioId: "Уникальный идентификатор сценария.",
-        humanName: "Техническое или редакторское название сценария.",
-        category: "Сценарии группируются по категориям.",
-        weight: "Целое число больше 0. Чем выше weight, тем выше шанс при выборе внутри категории",
-        title35: `До ${TEXT_LIMITS.name} символов в готовой строке.`,
-        summary35: `До ${TEXT_LIMITS.summary} символов в готовой строке.`,
-        description2000: `До ${TEXT_LIMITS.description} символов.`,
-        ooc500: `До ${TEXT_LIMITS.oocInfo} символов.`,
-        copy5000: `До ${TEXT_LIMITS.copyableText} символов.`,
-        hidden45: `До ${TEXT_LIMITS.hiddenLabel} символов.`,
-        date: "Формат ГГГГ-ММ-ДД.",
-        tags: "Через запятую",
-        color: "Формат #RRGGBB или #RRGGBBAA.",
-        templateId: "Уникальный идентификатор намерения внутри пакета.",
-        slotId: "Уникальный идентификатор слота внутри сценария.",
-        author: "Короткая подпись автора, если нужна в карточке.",
-        parameter: "Имя параметра для FTL, например partnerName.",
-        bindToSlot: "Выдать это намерение тому же участнику, который уже выбран в другом слоте.",
-        allowSameActorAs: "Разрешить переиспользование участника из указанных слотов, но не требовать его.",
-        globalPredicates: "Условия на весь раунд.",
-        candidatePredicates: "Условия на конкретного участника.",
-        visibilityOverride: "Позволяет карточке игнорировать настройки видимости намерения по умолчанию",
-        reveal: "Автоматическое раскрытие скрытого намерения. Сейчас поддерживается none или timer.",
-        textBindings: "Параметры для подстановки в FTL один раз при назначении сценария."
+      "fieldHints": {
+        "scenarioId": "Уникальный идентификатор сценария. Используйте латинские буквы без пробелов, каждое слово начинайте с большой буквы: SecretMeeting.",
+        "humanName": "Название сценария для отображения и отладки.",
+        "category": "Категория сценария",
+        "weight": "Целое число больше 0. Чем выше вес (weight), тем выше шанс выбора сценария в категории.",
+        "title35": "До 35 символов",
+        "summary35": "До 35 символов",
+        "description2000": "До 2000 символов.",
+        "ooc500": "До 500 символов.",
+        "copy5000": "До 5000 символов.",
+        "hidden45": "До 45 символов.",
+        "date": "Формат ГГГГ-ММ-ДД. Например, 2026-12-23",
+        "tags": "Укажите через запятую теги, чтобы сценарий было проще найти и отфильтровать. Например: bureaucracy, blackmail и т.д.",
+        "color": "Формат #RRGGBB или #RRGGBBAA.",
+        "templateId": "Уникальный идентификатор намерения. Используйте латинские буквы без пробелов, каждое слово начинайте с большой буквы: SecretMeetingIntention.",
+        "slotId": "Уникальный идентификатор слота внутри сценария.",
+        "author": "Имя автора намерения для отображения в карточке (если требуется)",
+        "parameter": "Имя параметра для подстановки в текст, например partnerName.",
+        "bindToSlot": "bindToSlot. Выдать это намерение тому же участнику, который уже выбран в другом слоте.",
+        "allowSameActorAs": "allowSameActorAs. Разрешить повторное использование участника из указанных слотов (для случайного выбора). По умолчанию каждый участник должен быть уникальным.",
+        "globalPredicates": "Глобальные условия раунда: режим раунда, время, количество активного экипажа и т.п.",
+        "candidatePredicates": "Условия, которым должен соответствовать кандидат.",
+        "visibilityOverride": "Задает видимость намерения вместо значения по умолчанию.",
+        "reveal": "Тип раскрытия скрытого намерения. Сейчас поддерживается без раскрытия (none) или по таймеру (timer).",
+        "textBindings": "Текстовые параметры для однократной подстановки в FTL-текст при назначении. Используются для данных персонажа из слота сценария, названия станции и др. Нажмите кнопку 'Копировать параметр' и вставьте его в текстовое содержимое.",
+        "defaultVisibility": "Базовая видимость намерения (может быть изменена в сценарии). Чтобы скрыть, выберите hidden.",
+        "revealMinutes": "Время в минутах до раскрытия намерения.",
+        "categoryTooltip": "Категория определяет правила распределения сценария (на раунд и персонажа) и внешний вид намерений (иконка и цвет).",
+        "enabled": "Если выключено, сценарий не будет участвовать в автоматическом распределении.",
+        "field": "Данные кандидата или раунда, которые используются для проверки условия. Для значений времени формат 00:00:00",
+        "operator": "Способ сравнения выбранного поля.",
+        "value": "Одиночное значение для сравнения. ",
+        "values": "Список допустимых или запрещённых значений.",
+        "valueFrom": "Нижняя граница диапазона.",
+        "valueTo": "Верхняя граница диапазона.",
+        "compareSlot": "Другой слот, используемый для сравнения с текущим значением.",
+        "copyableTextTooltip": "Текст, который игрок сможет скопировать из карточки намерения.",
+        "summaryTooltip": "Короткое описание для компактного отображения на карточке намерения.",
+        "oocInfoTooltip": "Пояснение вне роли (OOC): как отыгрывать намерение, какие рамки поведения допустимы и чего следует избегать.",
+        "hiddenLabelTooltip": "Название, отображаемое до раскрытия скрытого намерения.",
+        "colorTooltip": "Цвет карточки намерения в формате #RRGGBB или #RRGGBBAA.",
+        "iconSprite": "Путь до RSI-файла иконки.",
+        "iconState": "Состояние внутри RSI-файла иконки.",
+        "required": "Сценарий собирается только при заполнении всех обязательных слотов. Если это невозможно, сценарий пропускается.",
+        "slot": "Слот, из которого брать значение параметра.",
+        "key": "Ключ map-поля, используемый для проверки условия."
       },
-      buttons: {
-        addSecondaryTemplate: "Добавить второстепенный шаблон",
-        addGlobalPredicate: "Добавить предикат",
-        addSecondarySlot: "Добавить второстепенный слот",
-        addCandidatePredicate: "Добавить предикат",
-        addBinding: "Добавить текстовый параметр",
-        downloadScenario: "Скачать шаблон сценария YAML",
-        downloadIntentions: "Скачать шаблоны намерений YAML",
-        downloadFtl: "Скачать тексты FTL",
-        copyScenario: "Копировать сценарий YAML",
-        copyIntentions: "Копировать намерение YAML",
-        copyFtl: "Копировать тексты FTL"
+      "buttons": {
+        "addSecondaryTemplate": "Добавить",
+        "addGlobalPredicate": "Добавить",
+        "addSecondarySlot": "Добавить",
+        "addCandidatePredicate": "Добавить",
+        "addBinding": "Добавить",
+        "downloadScenario": "Скачать шаблон сценария YAML",
+        "downloadIntentions": "Скачать шаблон намерения YAML",
+        "downloadFtl": "Скачать текстовый контент FTL",
+        "copyScenario": "Копировать шаблон сценария YAML",
+        "copyIntentions": "Копировать шаблон намерения YAML",
+        "copyFtl": "Копировать текстовый контент FTL"
       },
-      placeholders: {
-        scenarioId: "ScenarioCardDebt",
-        scenarioName: "Карточный долг",
-        templateId: "IntentionExamplePrimary",
-        color: "#AABBCCFF",
-        iconSprite: "/Textures/Interface/Misc/job_icons.rsi",
-        iconState: "Passenger",
-        bindingParam: "Например, partnerName",
-        literal: "Текст literal",
-        addValue: "Добавить значение",
-        selectTemplate: "Выбери template",
-        selectSlot: "Выбери slot",
-        selectValue: "Выбери значение"
+      "placeholders": {
+        "scenarioId": "ScenarioExampleNew",
+        "scenarioName": "Лучший сценарий",
+        "templateId": "IntentionExamplePrimary",
+        "color": "#AABBCCFF",
+        "iconSprite": "/Textures/Interface/Misc/job_icons.rsi",
+        "iconState": "Passenger",
+        "bindingParam": "Например, partnerName",
+        "literal": "Статический текст",
+        "addValue": "Добавить значение",
+        "selectTemplate": "Выбери шаблон",
+        "selectSlot": "Выбери слот",
+        "selectValue": "Выбери значение"
       },
-      select: {
-        noBind: "Не использовать bind",
-        none: "–"
+      "select": {
+        "noBind": "Не использовать bind",
+        "none": "—"
       },
-      export: {
-        blocked: "Сначала исправь ошибки валидации. Экспорт заблокирован.",
-        copied: "Содержимое {filename} скопировано в буфер.",
-        copyFailed: "Не удалось записать в буфер обмена в этом браузере.",
-        downloaded: "Скачан файл {filename}.",
-        slotBuildOrder: "Полученный порядок сборки слотов",
-        generatedLocKeys: "Сгенерированные ключи FTL",
-        derivedCrew: "Минимальный состав экипажа (на основе расчетов)",
-        syntheticCrewAdded: "Предикат crewCount будет добавлен в экспорт.",
-        syntheticCrewSkipped: "Предикат crewCount не нужен"
+      "export": {
+        "blocked": "Сначала исправь ошибки валидации. Экспорт заблокирован.",
+        "copied": "Содержимое {filename} скопировано в буфер.",
+        "copyFailed": "Не удалось записать в буфер обмена в этом браузере.",
+        "downloaded": "Скачан файл {filename}.",
+        "slotBuildOrder": "Вычисляемый порядок сборки слотов",
+        "generatedLocKeys": "Ключи локализации (сгенерированные)",
+        "derivedCrew": "Минимальный экипаж (вычисляется автоматически)",
+        "syntheticCrewAdded": "В экспорт автоматически добавляется условие crewCount.",
+        "syntheticCrewSkipped": "Предикат crewCount не требуется: заданное правило уже обеспечивает нужную строгость."
       },
-      kinds: {
-        ownerDescription: "Всегда связан с owner slot.",
-        secondaryDescription: "Можно переиспользовать в нескольких второстепенных слотах."
+      "kinds": {
+        "ownerDescription": "Всегда связан со слотом владельца сценария (owner).",
+        "secondaryDescription": "Можно переиспользовать в нескольких второстепенных слотах."
       },
-      ruleModal: [
-        "Слот владельца сценария (owner) всегда один и всегда primary + required.",
+      "ruleModal": [
+        "Owner slot всегда один и всегда primary + required.",
         "bindToSlot и allowSameActorAs нельзя включать вместе.",
-        "У слота с bindToSlot не должно быть candidate predicates.",
+        "У bound slot не должно быть candidate predicates.",
         "sameAs / notSameAs собираются только через compareTo slot.",
-        "Экспорт генерирует контент-файлы, но не моделирует игровые квоты категорий."
-      ]
+        "Export генерирует контент-файлы и derived crewCount predicate, но не моделирует игровые квоты."
+      ],
+      "theme": "Тема",
+      "themes": {
+        "light": "Светлая",
+        "dark": "Тёмная"
+      },
+      "untitledDraft": "Новый сценарий",
+      "scenarioCommon": "Общие данные сценария",
+      "visibilityAndReveal": "Видимость и раскрытие",
+      "validationExportTitle": "Валидация, ошибки, статус и экспорт",
+      "validationExportDescription": "Сводка проверки сценария.",
+      "noSecondaryPairs": "Второстепенных слотов пока нет. Добавьте слот, чтобы создать связанную форму намерения.",
+      "confirmDeleteSlot": "Удалить второстепенный слот вместе со связанным намерением?",
+      "intentionTabs": "Вкладки намерений",
+      "intentionTabOne": "Вкладка 1",
+      "intentionTabsFuture": "+ (на будущее)",
+      "textParameterTitle": "Текстовый параметр {index}",
+      "copyPaste": {
+        "copy": "Копировать контент",
+        "paste": "Вставить контент",
+        "copied": "Контент намерения скопирован.",
+        "pasted": "Контент намерения вставлен.",
+        "copyBindingToken": "Копировать параметр",
+        "bindingTokenCopied": "FTL-подстановка {token} скопирована.",
+        "bindingTokenEmpty": "Сначала заполните имя параметра."
+      }
     },
-    issues: {
-      required: "{label} обязательно.",
-      lengthLimit: "{label} должно быть не длиннее {max} символов.",
-      unknownReference: "Значение \"{value}\" не найдено во встроенных подсказках редактора для поля {field}.",
-      conflictingPredicateValues: "Формы value / values / range / compareTo взаимно исключаются.",
-      missingPredicateValue: "Для выбранного оператора нужно значение.",
-      missingPredicateValues: "Для выбранного оператора нужен непустой список значений.",
-      missingPredicateRange: "Оператор between требует valueFrom и valueTo.",
-      missingCompareTo: "sameAs / notSameAs требуют compareTo.",
-      operatorFieldMismatchList: "contains / notContains работают только с list<string>.",
-      operatorFieldMismatchCompare: "Сравнение требует numeric / timespan / map-int поле.",
-      invalidPredicateValueType: "Тип значения не совпадает с типом выбранного поля.",
-      unexpectedCompareTo: "compareTo допустим только для sameAs / notSameAs.",
-      compareOutsideCandidate: "compareTo допустим только в candidate predicates.",
-      invalidCompareScope: "compareTo.scope должен быть slot.",
-      missingCompareSlot: "compareTo.slotId должен ссылаться на существующий slotId.",
-      compareFieldMismatch: "compareTo.field должен совпадать с field predicate.",
-      ownerSelfCompare: "Owner slot с compareTo почти наверняка сломает slotBuildOrder.",
-      invalidScope: "Ожидался scope={scope}.",
-      unknownField: "Неизвестное поле predicate.",
-      invalidOperator: "Оператор не поддерживается для выбранного поля.",
-      missingMapKey: "Для map-int поля нужен key.",
-      unexpectedMapKey: "key допустим только для map-int полей.",
-      missingBindingParameter: "У textParameterBinding должен быть параметр.",
-      invalidSelfBindingField: "Self binding использует неподдерживаемое поле.",
-      invalidTextBindingSlot: "Slot binding должен ссылаться на существующий slot.",
-      invalidSlotBindingField: "Slot binding использует неподдерживаемое поле.",
-      invalidRoundBinding: "Round binding поддерживает только stationName и stationTime.",
-      missingLiteralBinding: "Literal binding требует value.",
-      invalidTextBindingSource: "Источник binding должен быть self, slot, round или literal.",
-      invalidVisibilityType: "visibilityOverride.type должен быть visible или hidden.",
-      visibleWithReveal: "visible override не может иметь reveal.",
-      invalidRevealType: "reveal.type должен быть none или timer.",
-      invalidRevealMinutes: "timer reveal требует minutes > 0.",
-      unusedRevealMinutes: "minutes не используются, пока reveal.type = none.",
-      missingId: "{kind}: нужен id.",
-      invalidKind: "kind должен быть primary или secondary.",
-      invalidDefaultVisibility: "defaultVisibility должен быть visible или hidden.",
-      invalidColor: "Color должен быть в формате #RRGGBB или #RRGGBBAA.",
-      invalidCreationDate: "creationDate должен быть в формате YYYY-MM-DD.",
-      missingIconSprite: "Для icon нужен sprite.",
-      missingIconState: "Для icon нужен state.",
-      missingHiddenLabel: "Для hidden intention обычно стоит задать hiddenLabel.",
-      missingScenarioId: "Scenario id обязателен.",
-      missingScenarioName: "Scenario name обязателен.",
-      missingScenarioCategory: "Категория обязательна.",
-      categoryNotInCatalog: "Категория не найдена во встроенном каталоге редактора.",
-      invalidWeight: "Weight должен быть целым числом больше 0.",
-      duplicateIntentionId: "Intention id \"{id}\" должен быть уникальным внутри пакета.",
-      duplicateSlotId: "SlotId \"{id}\" должен быть уникальным.",
-      ownerSlotId: "Owner slot должен иметь slotId = owner.",
-      ownerSlotKind: "Owner slot должен быть primary.",
-      ownerSlotRequired: "Owner slot должен иметь required = true.",
-      ownerIntentionLink: "Owner slot должен ссылаться на owner intention template.",
-      missingSlotId: "SlotId обязателен.",
-      invalidSlotKind: "kind slot должен быть primary или secondary.",
-      missingIntentionReference: "Slot должен ссылаться на существующий intention template.",
-      kindMismatch: "kind slot должен совпадать с kind intention template.",
-      bindAndAllowSameActor: "bindToSlot и allowSameActorAs нельзя использовать вместе.",
-      missingBoundSlot: "bindToSlot должен ссылаться на существующий slot.",
-      selfBind: "bindToSlot не может ссылаться на текущий slot.",
-      boundSlotHasPredicates: "У bindToSlot-слота не должно быть candidatePredicates.",
-      selfAllowSameActor: "allowSameActorAs не может ссылаться на текущий slot.",
-      duplicateAllowSameActor: "allowSameActorAs не должен содержать дубликаты.",
-      missingAllowSameActorSlot: "allowSameActorAs должен ссылаться на существующие slot-ы.",
-      duplicateBindingParameter: "Имена textParameterBindings должны быть уникальны внутри slot.",
-      ownerHasDependencies: "Owner slot не должен зависеть от других slot-ов.",
-      slotDependencyCycle: "Граф зависимостей slot-ов содержит цикл.",
-      ownerNotFirst: "Owner slot должен быть первым в slotBuildOrder."
+    "issues": {
+      "required": "{label} обязательно.",
+      "lengthLimit": "{label} должно быть не длиннее {max} символов.",
+      "unknownReference": "Значение \"{value}\" не найдено во встроенных подсказках редактора для поля {field}.",
+      "conflictingPredicateValues": "Формы value / values / range / compareTo взаимно исключаются.",
+      "missingPredicateValue": "Для выбранного оператора нужно значение.",
+      "missingPredicateValues": "Для выбранного оператора нужен непустой список значений.",
+      "missingPredicateRange": "Оператор between требует valueFrom и valueTo.",
+      "missingCompareTo": "sameAs / notSameAs требуют compareTo.",
+      "operatorFieldMismatchList": "contains / notContains работают только с list<string>.",
+      "operatorFieldMismatchCompare": "Сравнение требует numeric / timespan / map-int поле.",
+      "invalidPredicateValueType": "Тип значения не совпадает с типом выбранного поля.",
+      "predicateMinValue": "Значение должно быть не меньше {min}.",
+      "unexpectedCompareTo": "compareTo допустим только для sameAs / notSameAs.",
+      "compareOutsideCandidate": "compareTo допустим только в candidate predicates.",
+      "invalidCompareScope": "compareTo.scope должен быть slot.",
+      "missingCompareSlot": "compareTo.slotId должен ссылаться на существующий slotId.",
+      "compareFieldMismatch": "compareTo.field должен совпадать с field predicate.",
+      "ownerSelfCompare": "Owner slot с compareTo почти наверняка сломает slotBuildOrder.",
+      "invalidScope": "Ожидался scope={scope}.",
+      "unknownField": "Неизвестное поле predicate.",
+      "invalidOperator": "Оператор не поддерживается для выбранного поля.",
+      "missingMapKey": "Для map-int поля нужен key.",
+      "unexpectedMapKey": "key допустим только для map-int полей.",
+      "missingBindingParameter": "У textParameterBinding должен быть параметр.",
+      "invalidSelfBindingField": "Self binding использует неподдерживаемое поле.",
+      "invalidTextBindingSlot": "Slot binding должен ссылаться на существующий slot.",
+      "invalidSlotBindingField": "Slot binding использует неподдерживаемое поле.",
+      "invalidRoundBinding": "Round binding поддерживает только stationName и stationTime.",
+      "missingLiteralBinding": "Literal binding требует value.",
+      "invalidTextBindingSource": "Источник binding должен быть self, slot, round или literal.",
+      "invalidVisibilityType": "visibilityOverride.type должен быть visible или hidden.",
+      "visibleWithReveal": "visible override не может иметь reveal.",
+      "invalidRevealType": "reveal.type должен быть none или timer.",
+      "invalidRevealMinutes": "timer reveal требует minutes > 0.",
+      "unusedRevealMinutes": "minutes не используются, пока reveal.type = none.",
+      "missingId": "{kind}: нужен id.",
+      "invalidKind": "kind должен быть primary или secondary.",
+      "invalidDefaultVisibility": "defaultVisibility должен быть visible или hidden.",
+      "invalidColor": "Color должен быть в формате #RRGGBB или #RRGGBBAA.",
+      "invalidCreationDate": "creationDate должен быть в формате YYYY-MM-DD.",
+      "missingIconSprite": "Для icon нужен sprite.",
+      "missingIconState": "Для icon нужен state.",
+      "missingHiddenLabel": "Для hidden intention обычно стоит задать hiddenLabel.",
+      "missingScenarioId": "Scenario id обязателен.",
+      "missingScenarioName": "Scenario name обязателен.",
+      "missingScenarioCategory": "Категория обязательна.",
+      "categoryNotInCatalog": "Категория не найдена во встроенном каталоге редактора.",
+      "invalidWeight": "Weight должен быть целым числом больше 0.",
+      "duplicateIntentionId": "Intention id \"{id}\" должен быть уникальным внутри пакета.",
+      "duplicateSlotId": "SlotId \"{id}\" должен быть уникальным.",
+      "ownerSlotId": "Owner slot должен иметь slotId = owner.",
+      "ownerSlotKind": "Owner slot должен быть primary.",
+      "ownerSlotRequired": "Owner slot должен иметь required = true.",
+      "ownerIntentionLink": "Owner slot должен ссылаться на owner intention template.",
+      "missingSlotId": "SlotId обязателен.",
+      "invalidSlotKind": "kind slot должен быть primary или secondary.",
+      "missingIntentionReference": "Slot должен ссылаться на существующий intention template.",
+      "kindMismatch": "kind slot должен совпадать с kind intention template.",
+      "bindAndAllowSameActor": "bindToSlot и allowSameActorAs нельзя использовать вместе.",
+      "missingBoundSlot": "bindToSlot должен ссылаться на существующий slot.",
+      "selfBind": "bindToSlot не может ссылаться на текущий slot.",
+      "boundSlotHasPredicates": "У bindToSlot-слота не должно быть candidatePredicates.",
+      "selfAllowSameActor": "allowSameActorAs не может ссылаться на текущий slot.",
+      "duplicateAllowSameActor": "allowSameActorAs не должен содержать дубликаты.",
+      "missingAllowSameActorSlot": "allowSameActorAs должен ссылаться на существующие slot-ы.",
+      "duplicateBindingParameter": "Имена textParameterBindings должны быть уникальны внутри slot.",
+      "ownerHasDependencies": "Owner slot не должен зависеть от других slot-ов.",
+      "slotDependencyCycle": "Граф зависимостей slot-ов содержит цикл.",
+      "ownerNotFirst": "Owner slot должен быть первым в slotBuildOrder."
     },
-    operators: {
-      equals: "equals · равно",
-      notEquals: "notEquals · не равно",
-      in: "in · входит в список",
-      notIn: "notIn · не входит в список",
-      contains: "contains · содержит",
-      notContains: "notContains · не содержит",
+    "operators": {
+      "equals": "equals · равно",
+      "notEquals": "notEquals · не равно",
+      "in": "in · входит в список",
+      "notIn": "notIn · не входит в список",
+      "contains": "contains · содержит",
+      "notContains": "notContains · не содержит",
       ">": "> · больше",
       ">=": ">= · больше либо равно",
       "<": "< · меньше",
       "<=": "<= · меньше либо равно",
-      between: "between · в диапазоне",
-      sameAs: "sameAs · как у другого slot",
-      notSameAs: "notSameAs · не как у другого slot"
+      "between": "between · в диапазоне",
+      "sameAs": "sameAs · как у другого слота",
+      "notSameAs": "notSameAs · не как у другого слота"
     },
-    severity: {
-      error: "Ошибка",
-      warning: "Предупреждение",
-      ok: "OK"
+    "severity": {
+      "error": "Ошибка",
+      "warning": "Предупреждение",
+      "ok": "OK"
     }
   },
-  en: {
-    appTitle: APP_TITLE,
-    ui: {
-      eyebrow: "Standalone static editor",
-      hero: "Scenario package editor: scenario template, intention templates, slots, predicates, and YAML + FTL export.",
-      reset: "Reset draft",
-      rules: "Quick rules",
-      categories: "Categories",
-      locale: "Language",
-      close: "Close",
-      add: "Add",
-      delete: "Delete",
-      choose: "Choose",
-      none: "None",
-      saveHint: "Autosave is on. The draft is stored in browser localStorage.",
-      statusOk: "The draft currently passes built-in validation.",
-      statusTitle: "Status",
-      issuesTitle: "Validation issues",
-      errors: "Errors",
-      warnings: "Warnings",
-      secondaryTemplates: "Secondary templates",
-      secondarySlots: "Secondary slots",
-      noIssues: "No errors or warnings right now.",
-      modalRulesTitle: "Quick rules",
-      modalCategoriesTitle: "Scenario categories",
-      sections: {
-        scenario: "Scenario template",
-        ownerIntention: "Owner intention template",
-        secondaryIntentions: "Secondary intention templates",
-        ownerSlot: "Owner slot",
-        secondarySlots: "Secondary slots",
-        export: "Export"
+  "en": {
+    "appTitle": "IntentionEditor",
+    "ui": {
+      "eyebrow": "Standalone static editor",
+      "hero": "Scenario package editor: scenario template, intention templates, slots, predicates, and YAML + FTL export.",
+      "reset": "Reset draft",
+      "rules": "Quick rules",
+      "categories": "Categories",
+      "locale": "Language",
+      "theme": "Theme",
+      "themes": {
+        "light": "Light",
+        "dark": "Dark"
       },
-      sectionDescriptions: {
-        scenario: "Scenario metadata and round-level global predicates.",
-        ownerIntention: "The primary intention template always linked to the owner slot.",
-        secondaryIntentions: "Reusable library of secondary intention templates.",
-        ownerSlot: "Built-in primary slot for the scenario owner.",
-        secondarySlots: "Scenario structure: slot links, predicates, reveal, and text bindings.",
-        export: "Preview and download the generated YAML/FTL artifacts."
+      "close": "Close",
+      "add": "Add",
+      "delete": "Delete",
+      "choose": "Choose",
+      "none": "None",
+      "untitledDraft": "New scenario",
+      "scenarioCommon": "Scenario common data",
+      "visibilityAndReveal": "Visibility and reveal",
+      "validationExportTitle": "Validation, issues, status, and export",
+      "validationExportDescription": "Validation summary and generated YAML/FTL artifacts live at the bottom of the editor.",
+      "noSecondaryPairs": "There are no secondary slots yet. Add a slot to create its linked intention form.",
+      "confirmDeleteSlot": "Delete this secondary slot together with its linked intention?",
+      "intentionTabs": "Intention tabs",
+      "intentionTabOne": "Intention 1",
+      "intentionTabsFuture": "+ tab later",
+      "textParameterTitle": "Text parameter {index}",
+      "copyPaste": {
+        "copy": "Copy content",
+        "paste": "Paste content",
+        "copied": "Intention content copied.",
+        "pasted": "Intention content pasted.",
+        "copyBindingToken": "Copy FTL",
+        "bindingTokenCopied": "FTL token {token} copied.",
+        "bindingTokenEmpty": "Fill in the parameter name first."
       },
-      fields: {
-        scenarioId: "Scenario id",
-        humanName: "Human name",
-        category: "Category",
-        weight: "Weight",
-        enabled: "Enabled",
-        title: "Title",
-        summary: "Summary",
-        description: "Description",
-        oocInfo: "OOC note",
-        copyableText: "Copyable text",
-        hiddenLabel: "Hidden label",
-        color: "Color",
-        author: "Author",
-        creationDate: "Creation date",
-        tags: "Tags",
-        iconSprite: "Icon sprite",
-        iconState: "Icon state",
-        addIcon: "Enable icon",
-        templateId: "Template id",
-        visibility: "Visibility",
-        slotId: "slotId",
-        intentionTemplate: "Intention template",
-        required: "Required",
-        bindToSlot: "bindToSlot",
-        allowSameActorAs: "allowSameActorAs",
-        candidatePredicates: "Candidate predicates",
-        globalPredicates: "Global predicates",
-        textBindings: "Text parameter bindings",
-        visibilityOverride: "Visibility override",
-        reveal: "Reveal",
-        revealMinutes: "Reveal minutes",
-        compareSlot: "Compare slot",
-        parameter: "Parameter",
-        source: "Source",
-        slot: "Slot",
-        field: "Field",
-        value: "Value",
-        values: "Values",
-        valueFrom: "From",
-        valueTo: "To",
-        key: "Key"
+      "saveHint": "Autosave is on. The draft is stored in browser localStorage.",
+      "statusOk": "The draft currently passes built-in validation.",
+      "statusTitle": "Status",
+      "issuesTitle": "Validation issues",
+      "errors": "Errors",
+      "warnings": "Warnings",
+      "secondaryTemplates": "Secondary templates",
+      "secondarySlots": "Secondary slots",
+      "noIssues": "No errors or warnings right now.",
+      "emptySection": "None.",
+      "modalRulesTitle": "Quick rules",
+      "modalCategoriesTitle": "Scenario categories",
+      "sections": {
+        "scenario": "Scenario template",
+        "ownerIntention": "Owner intention template",
+        "secondaryIntentions": "Secondary intention templates",
+        "ownerSlot": "Owner slot",
+        "secondarySlots": "Secondary slots",
+        "export": "Export"
       },
-      fieldHints: {
-        scenarioId: "Unique scenario prototype id. ASCII-style PascalCase is recommended.",
-        humanName: "Human-readable scenario name for tooling and debug output.",
-        category: "Category from requirements. The YAML export uses the category id.",
-        weight: "Integer greater than 0. Higher weight means more likely selection.",
-        title35: `Up to ${TEXT_LIMITS.name} characters in the final localized string.`,
-        summary35: `Up to ${TEXT_LIMITS.summary} characters in the final localized string.`,
-        description2000: `Up to ${TEXT_LIMITS.description} characters.`,
-        ooc500: `Up to ${TEXT_LIMITS.oocInfo} characters.`,
-        copy5000: `Up to ${TEXT_LIMITS.copyableText} characters.`,
-        hidden45: `Up to ${TEXT_LIMITS.hiddenLabel} characters.`,
-        date: "Format: YYYY-MM-DD.",
-        tags: "Comma-separated. A trailing comma is allowed and will be cleaned during export.",
-        color: "Format: #RRGGBB or #RRGGBBAA.",
-        templateId: "Unique intention template id within the package.",
-        slotId: "Unique slot id within the scenario.",
-        author: "Short author label if you want it on the card.",
-        parameter: "FTL parameter name, for example partnerName.",
-        bindToSlot: "Assign this intention to the same participant already selected in another slot.",
-        allowSameActorAs: "Allow reusing the participant from selected slots, without forcing it.",
-        globalPredicates: "Round-wide checks. They only use round fields from the snapshot.",
-        candidatePredicates: "Per-participant checks. They only use candidate fields.",
-        visibilityOverride: "Overrides card visibility on top of the template defaultVisibility.",
-        reveal: "Automatic reveal for hidden intentions. Supported modes: none and timer.",
-        textBindings: "Values resolved once at commit time and injected into FTL."
+      "sectionDescriptions": {
+        "scenario": "Scenario metadata and round-level global predicates.",
+        "ownerIntention": "The primary intention template always linked to the owner slot.",
+        "secondaryIntentions": "Reusable library of secondary intention templates.",
+        "ownerSlot": "Built-in primary slot for the scenario owner.",
+        "secondarySlots": "Scenario structure: slots on the left and linked intention templates on the right.",
+        "secondarySlotPair": "Secondary slot settings: candidate rules, links, and text parameters. The linked intention is edited on the right.",
+        "export": "Preview and download the generated YAML/FTL artifacts."
       },
-      buttons: {
-        addSecondaryTemplate: "Add secondary template",
-        addGlobalPredicate: "Add predicate",
-        addSecondarySlot: "Add secondary slot",
-        addCandidatePredicate: "Add predicate",
-        addBinding: "Add binding",
-        downloadScenario: "Download scenario YAML",
-        downloadIntentions: "Download intention YAML",
-        downloadFtl: "Download FTL",
-        copyScenario: "Copy scenario YAML",
-        copyIntentions: "Copy intention YAML",
-        copyFtl: "Copy FTL"
+      "fields": {
+        "scenarioId": "Scenario id",
+        "humanName": "Human name",
+        "category": "Category",
+        "weight": "Weight",
+        "enabled": "Enabled",
+        "title": "Title",
+        "summary": "Summary",
+        "description": "Description",
+        "oocInfo": "OOC note",
+        "copyableText": "Copyable text",
+        "hiddenLabel": "Hidden label",
+        "color": "Color",
+        "author": "Author",
+        "creationDate": "Creation date",
+        "tags": "Tags",
+        "iconSprite": "Icon sprite",
+        "iconState": "Icon state",
+        "addIcon": "Enable icon",
+        "templateId": "Template id",
+        "visibility": "Visibility",
+        "slotId": "slotId",
+        "intentionTemplate": "Intention template",
+        "required": "Required",
+        "bindToSlot": "bindToSlot",
+        "allowSameActorAs": "allowSameActorAs",
+        "candidatePredicates": "Candidate predicates",
+        "globalPredicates": "Global predicates",
+        "textBindings": "Text parameter bindings",
+        "visibilityOverride": "Visibility override",
+        "reveal": "Reveal",
+        "revealMinutes": "Reveal minutes",
+        "compareSlot": "Compare slot",
+        "parameter": "Parameter",
+        "source": "Source",
+        "slot": "Slot",
+        "field": "Field",
+        "value": "Value",
+        "values": "Values",
+        "valueFrom": "From",
+        "valueTo": "To",
+        "key": "Key",
+        "operator": "Operator"
       },
-      placeholders: {
-        scenarioId: "ScenarioCardDebt",
-        scenarioName: "Card debt",
-        templateId: "IntentionExamplePrimary",
-        color: "#AABBCCFF",
-        iconSprite: "/Textures/Interface/Misc/job_icons.rsi",
-        iconState: "Passenger",
-        bindingParam: "For example, partnerName",
-        literal: "Literal text",
-        addValue: "Add value",
-        selectTemplate: "Choose template",
-        selectSlot: "Choose slot",
-        selectValue: "Choose value"
+      "fieldHints": {
+        "scenarioId": "Unique scenario prototype id. ASCII-style PascalCase is recommended.",
+        "humanName": "Human-readable scenario name for tooling and debug output.",
+        "category": "Category from requirements. The YAML export uses the category id.",
+        "weight": "Integer greater than 0. Higher weight means more likely selection.",
+        "title35": "Up to 35 characters in the final localized string.",
+        "summary35": "Up to 35 characters in the final localized string.",
+        "description2000": "Up to 2000 characters.",
+        "ooc500": "Up to 500 characters.",
+        "copy5000": "Up to 5000 characters.",
+        "hidden45": "Up to 45 characters.",
+        "date": "Format: YYYY-MM-DD.",
+        "tags": "Comma-separated. A trailing comma is allowed and will be cleaned during export.",
+        "color": "Format: #RRGGBB or #RRGGBBAA.",
+        "templateId": "Unique intention template id within the package.",
+        "slotId": "Unique slot id within the scenario.",
+        "author": "Short author label if you want it on the card.",
+        "parameter": "FTL parameter name, for example partnerName.",
+        "bindToSlot": "Assign this intention to the same participant already selected in another slot.",
+        "allowSameActorAs": "Allow reusing the participant from selected slots, without forcing it.",
+        "globalPredicates": "Round-wide checks. They only use round fields from the snapshot.",
+        "candidatePredicates": "Per-participant checks. They only use candidate fields.",
+        "visibilityOverride": "Overrides card visibility on top of the template defaultVisibility.",
+        "reveal": "Automatic reveal for hidden intentions. Supported modes: none and timer.",
+        "textBindings": "Values resolved once at commit time and injected into FTL.",
+        "defaultVisibility": "Base card visibility before any slot override.",
+        "revealMinutes": "Minimum 1 minute. Active only for hidden + timer.",
+        "categoryTooltip": "Choose the scenario category; only its id is exported.",
+        "enabled": "If disabled, the scenario remains in the file but should not be picked by normal distribution.",
+        "field": "Snapshot or candidate field checked by this predicate.",
+        "operator": "How the selected field is compared.",
+        "value": "Single comparison value.",
+        "values": "List of allowed or rejected values.",
+        "valueFrom": "Lower range bound.",
+        "valueTo": "Upper range bound.",
+        "compareSlot": "Another slot used for sameAs / notSameAs comparison.",
+        "copyableTextTooltip": "Material the player can copy from the intention card.",
+        "summaryTooltip": "Short summary line for compact card display.",
+        "oocInfoTooltip": "OOC note for tone, limits, or safety context.",
+        "hiddenLabelTooltip": "Safe label shown before a hidden intention is revealed.",
+        "colorTooltip": "Card color in #RRGGBB or #RRGGBBAA format.",
+        "iconSprite": "Path to the icon RSI file.",
+        "iconState": "State inside the icon RSI file.",
+        "required": "A required slot must receive a participant during scenario build.",
+        "slot": "Slot used as the text parameter source.",
+        "key": "Map key when the predicate targets a map-int field."
       },
-      select: {
-        noBind: "No bind",
-        none: "—"
+      "buttons": {
+        "addSecondaryTemplate": "Add secondary template",
+        "addGlobalPredicate": "Add predicate",
+        "addSecondarySlot": "Add secondary slot",
+        "addCandidatePredicate": "Add predicate",
+        "addBinding": "Add binding",
+        "downloadScenario": "Download scenario YAML",
+        "downloadIntentions": "Download intention YAML",
+        "downloadFtl": "Download FTL",
+        "copyScenario": "Copy scenario YAML",
+        "copyIntentions": "Copy intention YAML",
+        "copyFtl": "Copy FTL"
       },
-      export: {
-        blocked: "Fix validation errors first. Export is blocked.",
-        copied: "{filename} was copied to the clipboard.",
-        copyFailed: "Could not write to the clipboard in this browser.",
-        downloaded: "Downloaded {filename}.",
-        slotBuildOrder: "Derived slotBuildOrder",
-        generatedLocKeys: "Generated loc keys",
-        derivedCrew: "Derived minimum crew",
-        syntheticCrewAdded: "A synthetic crewCount predicate will be added to export.",
-        syntheticCrewSkipped: "No synthetic crewCount predicate is needed because an authored rule is already strict enough."
+      "placeholders": {
+        "scenarioId": "ScenarioCardDebt",
+        "scenarioName": "Card debt",
+        "templateId": "IntentionExamplePrimary",
+        "color": "#AABBCCFF",
+        "iconSprite": "/Textures/Interface/Misc/job_icons.rsi",
+        "iconState": "Passenger",
+        "bindingParam": "For example, partnerName",
+        "literal": "Literal text",
+        "addValue": "Add value",
+        "selectTemplate": "Choose template",
+        "selectSlot": "Choose slot",
+        "selectValue": "Choose value"
       },
-      kinds: {
-        ownerDescription: "Always linked to the owner slot.",
-        secondaryDescription: "Can be reused by multiple secondary slots."
+      "select": {
+        "noBind": "No bind",
+        "none": "—"
       },
-      ruleModal: [
+      "export": {
+        "blocked": "Fix validation errors first. Export is blocked.",
+        "copied": "{filename} was copied to the clipboard.",
+        "copyFailed": "Could not write to the clipboard in this browser.",
+        "downloaded": "Downloaded {filename}.",
+        "slotBuildOrder": "Derived slotBuildOrder",
+        "generatedLocKeys": "Generated loc keys",
+        "derivedCrew": "Derived minimum crew",
+        "syntheticCrewAdded": "A synthetic crewCount predicate will be added to export.",
+        "syntheticCrewSkipped": "No synthetic crewCount predicate is needed because an authored rule is already strict enough."
+      },
+      "kinds": {
+        "ownerDescription": "Always linked to the owner slot.",
+        "secondaryDescription": "Can be reused by multiple secondary slots."
+      },
+      "ruleModal": [
         "There is always exactly one owner slot, and it is always primary + required.",
         "bindToSlot and allowSameActorAs cannot be enabled together.",
         "A bound slot must not define candidate predicates.",
@@ -1352,98 +1459,104 @@ const STRINGS = {
         "Export generates content files and the derived crewCount predicate, but does not simulate runtime quotas."
       ]
     },
-    issues: {
-      required: "{label} is required.",
-      lengthLimit: "{label} must be at most {max} characters.",
-      unknownReference: "Value \"{value}\" is not present in the built-in suggestions for field {field}.",
-      conflictingPredicateValues: "value / values / range / compareTo are mutually exclusive.",
-      missingPredicateValue: "This operator requires a value.",
-      missingPredicateValues: "This operator requires a non-empty values list.",
-      missingPredicateRange: "between requires both valueFrom and valueTo.",
-      missingCompareTo: "sameAs / notSameAs require compareTo.",
-      operatorFieldMismatchList: "contains / notContains only work with list<string> fields.",
-      operatorFieldMismatchCompare: "Comparison operators require a numeric, timespan, or map-int field.",
-      invalidPredicateValueType: "The provided value does not match the selected field type.",
-      unexpectedCompareTo: "compareTo is only allowed for sameAs / notSameAs.",
-      compareOutsideCandidate: "compareTo is only allowed in candidate predicates.",
-      invalidCompareScope: "compareTo.scope must be slot.",
-      missingCompareSlot: "compareTo.slotId must reference an existing slotId.",
-      compareFieldMismatch: "compareTo.field must match the predicate field.",
-      ownerSelfCompare: "A compareTo on the owner slot will likely break slotBuildOrder.",
-      invalidScope: "Expected scope={scope}.",
-      unknownField: "Unknown predicate field.",
-      invalidOperator: "This operator is not supported for the selected field.",
-      missingMapKey: "This map-int field requires a key.",
-      unexpectedMapKey: "key is only allowed for map-int fields.",
-      missingBindingParameter: "This textParameterBinding must have a parameter name.",
-      invalidSelfBindingField: "Self binding uses an unsupported field.",
-      invalidTextBindingSlot: "Slot binding must reference an existing slot.",
-      invalidSlotBindingField: "Slot binding uses an unsupported field.",
-      invalidRoundBinding: "Round binding only supports stationName and stationTime.",
-      missingLiteralBinding: "Literal binding requires a value.",
-      invalidTextBindingSource: "Binding source must be self, slot, round, or literal.",
-      invalidVisibilityType: "visibilityOverride.type must be visible or hidden.",
-      visibleWithReveal: "A visible override cannot define reveal.",
-      invalidRevealType: "reveal.type must be none or timer.",
-      invalidRevealMinutes: "A timer reveal requires minutes > 0.",
-      unusedRevealMinutes: "minutes are unused while reveal.type = none.",
-      missingId: "{kind}: id is required.",
-      invalidKind: "kind must be primary or secondary.",
-      invalidDefaultVisibility: "defaultVisibility must be visible or hidden.",
-      invalidColor: "Color must use #RRGGBB or #RRGGBBAA.",
-      invalidCreationDate: "creationDate must use YYYY-MM-DD.",
-      missingIconSprite: "Icon sprite is required when icon is enabled.",
-      missingIconState: "Icon state is required when icon is enabled.",
-      missingHiddenLabel: "A hidden intention should usually define hiddenLabel.",
-      missingScenarioId: "Scenario id is required.",
-      missingScenarioName: "Scenario name is required.",
-      missingScenarioCategory: "Category is required.",
-      categoryNotInCatalog: "The category is not present in the editor catalog.",
-      invalidWeight: "Weight must be an integer greater than 0.",
-      duplicateIntentionId: "Intention id \"{id}\" must be unique inside the package.",
-      duplicateSlotId: "SlotId \"{id}\" must be unique.",
-      ownerSlotId: "The owner slot must use slotId = owner.",
-      ownerSlotKind: "The owner slot must be primary.",
-      ownerSlotRequired: "The owner slot must have required = true.",
-      ownerIntentionLink: "The owner slot must reference the owner intention template.",
-      missingSlotId: "slotId is required.",
-      invalidSlotKind: "Slot kind must be primary or secondary.",
-      missingIntentionReference: "The slot must reference an existing intention template.",
-      kindMismatch: "The slot kind must match the intention template kind.",
-      bindAndAllowSameActor: "bindToSlot and allowSameActorAs cannot be used together.",
-      missingBoundSlot: "bindToSlot must reference an existing slot.",
-      selfBind: "bindToSlot cannot point to the current slot.",
-      boundSlotHasPredicates: "A bound slot must not define candidatePredicates.",
-      selfAllowSameActor: "allowSameActorAs cannot reference the current slot.",
-      duplicateAllowSameActor: "allowSameActorAs must not contain duplicates.",
-      missingAllowSameActorSlot: "allowSameActorAs must reference existing slots.",
-      duplicateBindingParameter: "textParameterBinding names must be unique inside the slot.",
-      ownerHasDependencies: "The owner slot must not depend on other slots.",
-      slotDependencyCycle: "The slot dependency graph contains a cycle.",
-      ownerNotFirst: "The owner slot must be first in slotBuildOrder."
+    "issues": {
+      "required": "{label} is required.",
+      "lengthLimit": "{label} must be at most {max} characters.",
+      "unknownReference": "Value \"{value}\" is not present in the built-in suggestions for field {field}.",
+      "conflictingPredicateValues": "value / values / range / compareTo are mutually exclusive.",
+      "missingPredicateValue": "This operator requires a value.",
+      "missingPredicateValues": "This operator requires a non-empty values list.",
+      "missingPredicateRange": "between requires both valueFrom and valueTo.",
+      "missingCompareTo": "sameAs / notSameAs require compareTo.",
+      "operatorFieldMismatchList": "contains / notContains only work with list<string> fields.",
+      "operatorFieldMismatchCompare": "Comparison operators require a numeric, timespan, or map-int field.",
+      "invalidPredicateValueType": "The provided value does not match the selected field type.",
+      "predicateMinValue": "The value must be at least {min}.",
+      "unexpectedCompareTo": "compareTo is only allowed for sameAs / notSameAs.",
+      "compareOutsideCandidate": "compareTo is only allowed in candidate predicates.",
+      "invalidCompareScope": "compareTo.scope must be slot.",
+      "missingCompareSlot": "compareTo.slotId must reference an existing slotId.",
+      "compareFieldMismatch": "compareTo.field must match the predicate field.",
+      "ownerSelfCompare": "A compareTo on the owner slot will likely break slotBuildOrder.",
+      "invalidScope": "Expected scope={scope}.",
+      "unknownField": "Unknown predicate field.",
+      "invalidOperator": "This operator is not supported for the selected field.",
+      "missingMapKey": "This map-int field requires a key.",
+      "unexpectedMapKey": "key is only allowed for map-int fields.",
+      "missingBindingParameter": "This textParameterBinding must have a parameter name.",
+      "invalidSelfBindingField": "Self binding uses an unsupported field.",
+      "invalidTextBindingSlot": "Slot binding must reference an existing slot.",
+      "invalidSlotBindingField": "Slot binding uses an unsupported field.",
+      "invalidRoundBinding": "Round binding only supports stationName and stationTime.",
+      "missingLiteralBinding": "Literal binding requires a value.",
+      "invalidTextBindingSource": "Binding source must be self, slot, round, or literal.",
+      "invalidVisibilityType": "visibilityOverride.type must be visible or hidden.",
+      "visibleWithReveal": "A visible override cannot define reveal.",
+      "invalidRevealType": "reveal.type must be none or timer.",
+      "invalidRevealMinutes": "A timer reveal requires minutes > 0.",
+      "unusedRevealMinutes": "minutes are unused while reveal.type = none.",
+      "missingId": "{kind}: id is required.",
+      "invalidKind": "kind must be primary or secondary.",
+      "invalidDefaultVisibility": "defaultVisibility must be visible or hidden.",
+      "invalidColor": "Color must use #RRGGBB or #RRGGBBAA.",
+      "invalidCreationDate": "creationDate must use YYYY-MM-DD.",
+      "missingIconSprite": "Icon sprite is required when icon is enabled.",
+      "missingIconState": "Icon state is required when icon is enabled.",
+      "missingHiddenLabel": "A hidden intention should usually define hiddenLabel.",
+      "missingScenarioId": "Scenario id is required.",
+      "missingScenarioName": "Scenario name is required.",
+      "missingScenarioCategory": "Category is required.",
+      "categoryNotInCatalog": "The category is not present in the editor catalog.",
+      "invalidWeight": "Weight must be an integer greater than 0.",
+      "duplicateIntentionId": "Intention id \"{id}\" must be unique inside the package.",
+      "duplicateSlotId": "SlotId \"{id}\" must be unique.",
+      "ownerSlotId": "The owner slot must use slotId = owner.",
+      "ownerSlotKind": "The owner slot must be primary.",
+      "ownerSlotRequired": "The owner slot must have required = true.",
+      "ownerIntentionLink": "The owner slot must reference the owner intention template.",
+      "missingSlotId": "slotId is required.",
+      "invalidSlotKind": "Slot kind must be primary or secondary.",
+      "missingIntentionReference": "The slot must reference an existing intention template.",
+      "kindMismatch": "The slot kind must match the intention template kind.",
+      "bindAndAllowSameActor": "bindToSlot and allowSameActorAs cannot be used together.",
+      "missingBoundSlot": "bindToSlot must reference an existing slot.",
+      "selfBind": "bindToSlot cannot point to the current slot.",
+      "boundSlotHasPredicates": "A bound slot must not define candidatePredicates.",
+      "selfAllowSameActor": "allowSameActorAs cannot reference the current slot.",
+      "duplicateAllowSameActor": "allowSameActorAs must not contain duplicates.",
+      "missingAllowSameActorSlot": "allowSameActorAs must reference existing slots.",
+      "duplicateBindingParameter": "textParameterBinding names must be unique inside the slot.",
+      "ownerHasDependencies": "The owner slot must not depend on other slots.",
+      "slotDependencyCycle": "The slot dependency graph contains a cycle.",
+      "ownerNotFirst": "The owner slot must be first in slotBuildOrder."
     },
-    operators: {
-      equals: "equals · matches value",
-      notEquals: "notEquals · differs from value",
-      in: "in · is one of",
-      notIn: "notIn · is not one of",
-      contains: "contains · list contains",
-      notContains: "notContains · list does not contain",
+    "operators": {
+      "equals": "equals · matches value",
+      "notEquals": "notEquals · differs from value",
+      "in": "in · is one of",
+      "notIn": "notIn · is not one of",
+      "contains": "contains · list contains",
+      "notContains": "notContains · list does not contain",
       ">": "> · greater than",
       ">=": ">= · greater or equal",
       "<": "< · less than",
       "<=": "<= · less or equal",
-      between: "between · inside range",
-      sameAs: "sameAs · same as another slot",
-      notSameAs: "notSameAs · different from another slot"
+      "between": "between · inside range",
+      "sameAs": "sameAs · same as another slot",
+      "notSameAs": "notSameAs · different from another slot"
     },
-    severity: {
-      error: "Error",
-      warning: "Warning",
-      ok: "OK"
+    "severity": {
+      "error": "Error",
+      "warning": "Warning",
+      "ok": "OK"
     }
   }
 };
+
+
+/* js/i18n.js */
+const SUPPORTED_LOCALES = ["ru", "en"];
+const DEFAULT_LOCALE = "ru";
 
 function lookup(locale, key) {
   return key.split(".").reduce((current, part) => current?.[part], STRINGS[locale]);
@@ -1454,7 +1567,7 @@ function normalizeLocale(locale) {
 }
 
 function getLocaleLabel(locale) {
-  return locale === "ru" ? "Русский" : "English";
+  return locale === "ru" ? "\u0420\u0443\u0441\u0441\u043a\u0438\u0439" : "English";
 }
 
 function t(locale, key, params = {}) {
@@ -1704,12 +1817,13 @@ function createOwnerSlot() {
   };
 }
 
-function createSecondarySlot() {
+function createSecondarySlot(linkedIntentionUid = "") {
   return {
     uid: nextUid("slot"),
     slotId: "",
     kind: INTENTION_KINDS.secondary,
     intentionId: "",
+    linkedIntentionUid,
     required: true,
     candidatePredicates: [],
     bindToSlot: "",
@@ -1782,6 +1896,7 @@ function normalizeDraft(rawDraft, locale = "ru") {
     kind: INTENTION_KINDS.secondary
   }));
 
+  const linkedIntentionUids = new Set();
   draft.secondarySlots = (rawDraft.secondarySlots ?? []).map(slot => ({
     ...createSecondarySlot(),
     ...slot,
@@ -1798,7 +1913,21 @@ function normalizeDraft(rawDraft, locale = "ru") {
       ...binding,
       uid: binding.uid ?? nextUid("binding")
     }))
-  }));
+  })).map(slot => {
+    let linked = draft.secondaryIntentions.find(intention => intention.uid === slot.linkedIntentionUid) ?? null;
+    if (!linked && slot.intentionId) {
+      linked = draft.secondaryIntentions.find(intention => intention.id === slot.intentionId) ?? null;
+    }
+    if (!linked) {
+      linked = draft.secondaryIntentions.find(intention => !linkedIntentionUids.has(intention.uid)) ?? null;
+    }
+    if (linked) {
+      slot.linkedIntentionUid = linked.uid;
+      slot.intentionId = linked.id;
+      linkedIntentionUids.add(linked.uid);
+    }
+    return slot;
+  });
 
   draft.globalPredicates = (rawDraft.globalPredicates ?? []).map(predicate => ({
     ...createPredicate("round"),
@@ -1865,6 +1994,24 @@ function saveLocale(locale) {
     window.localStorage.setItem(LOCALE_STORAGE_KEY, normalizeLocale(locale));
   } catch (error) {
     console.warn("Failed to save IntentionEditor locale:", error);
+  }
+}
+
+function loadTheme() {
+  try {
+    const value = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return value === "dark" ? "dark" : "light";
+  } catch (error) {
+    console.warn("Failed to load IntentionEditor theme:", error);
+    return "light";
+  }
+}
+
+function saveTheme(theme) {
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme === "dark" ? "dark" : "light");
+  } catch (error) {
+    console.warn("Failed to save IntentionEditor theme:", error);
   }
 }
 
@@ -2024,6 +2171,44 @@ function validatePredicateValueTypes(issues, locale, path, predicate, fieldDefin
   }
 }
 
+function validatePredicateNumericBounds(issues, locale, path, predicate, fieldDefinition) {
+  if (!Number.isFinite(fieldDefinition.min) || !["int", "map-int"].includes(fieldDefinition.type)) {
+    return;
+  }
+
+  const min = fieldDefinition.min;
+  const numericEntries = [
+    { path: `${path}.value`, value: predicate.value },
+    { path: `${path}.valueFrom`, value: predicate.valueFrom },
+    { path: `${path}.valueTo`, value: predicate.valueTo }
+  ];
+
+  for (const entry of numericEntries) {
+    if (!nonEmpty(entry.value)) {
+      continue;
+    }
+
+    const number = Number(entry.value);
+    if (Number.isFinite(number) && number < min) {
+      addIssue(issues, "error", entry.path, "predicate-min-value", issueText(locale, "predicateMinValue", { min }));
+    }
+  }
+
+  if (Array.isArray(predicate.values)) {
+    for (const value of predicate.values) {
+      if (!nonEmpty(value)) {
+        continue;
+      }
+
+      const number = Number(value);
+      if (Number.isFinite(number) && number < min) {
+        addIssue(issues, "error", `${path}.values`, "predicate-min-value", issueText(locale, "predicateMinValue", { min }));
+        break;
+      }
+    }
+  }
+}
+
 function validatePredicateIdentifiers(issues, locale, path, predicate, fieldDefinition) {
   const values = [];
   if (nonEmpty(predicate.key)) {
@@ -2101,6 +2286,7 @@ function validatePredicate(issues, locale, path, predicate, context) {
 
   validatePredicateShape(issues, locale, path, predicate, fieldDefinition);
   validatePredicateValueTypes(issues, locale, path, predicate, fieldDefinition);
+  validatePredicateNumericBounds(issues, locale, path, predicate, fieldDefinition);
   validatePredicateIdentifiers(issues, locale, path, predicate, fieldDefinition);
   validateCompareTo(issues, locale, path, predicate, context);
 }
@@ -2910,6 +3096,15 @@ const MODAL_TYPES = {
   categories: "categories"
 };
 
+const INTENTION_CONTENT_FIELDS = [
+  "name",
+  "summary",
+  "description",
+  "oocInfo",
+  "copyableText",
+  "hiddenLabel"
+];
+
 function localized(locale, value) {
   return getLocalizedText(locale, value);
 }
@@ -2966,8 +3161,21 @@ function secondarySlotTitle(locale, index) {
 }
 
 function renderHelpIcon(text) {
+  if (!text) {
+    return "";
+  }
+
   return `
     <span class="help-icon" tabindex="0" aria-label="${escapeHtml(text)}" data-tooltip="${escapeHtml(text)}">?</span>
+  `;
+}
+
+function renderFieldLabel(label, helpText = "") {
+  return `
+    <span class="field-label">
+      ${escapeHtml(label)}
+      ${renderHelpIcon(helpText)}
+    </span>
   `;
 }
 
@@ -3036,13 +3244,17 @@ function createActionStatus(locale, key, params = {}, tone = "ok") {
 function mountApp(root) {
   const initialLocale = loadLocale();
   const initialDraft = loadDraft(initialLocale) ?? createEmptyDraft(initialLocale);
+  const initialTheme = loadTheme();
 
   const state = {
     locale: initialLocale,
+    theme: initialTheme,
     draft: normalizeDraft(initialDraft, initialLocale),
     validation: validateDraft(initialDraft, initialLocale),
     artifacts: buildExportArtifacts(initialDraft),
     actionStatus: null,
+    intentionClipboard: null,
+    categoryDropdownOpen: false,
     modal: null
   };
 
@@ -3119,6 +3331,7 @@ function mountApp(root) {
   function recalculate({ save = true, actionStatus = null, normalizeTagBuffers = false } = {}) {
     const focusSnapshot = captureFocusSnapshot();
     state.draft.ownerSlot.intentionId = state.draft.ownerIntention.id;
+    synchronizeLinkedIntentions();
     state.draft.lastUpdatedAt = new Date().toISOString();
     synchronizeDraftTags({ normalizeBuffers: normalizeTagBuffers });
     state.validation = validateDraft(state.draft, state.locale);
@@ -3137,6 +3350,12 @@ function mountApp(root) {
     recalculate({ save: true });
   }
 
+  function setTheme(nextTheme) {
+    state.theme = nextTheme === "dark" ? "dark" : "light";
+    saveTheme(state.theme);
+    render();
+  }
+
   function resetDraft() {
     clearDraft();
     state.draft = createEmptyDraft(state.locale);
@@ -3150,6 +3369,34 @@ function mountApp(root) {
 
   function findSecondaryIntention(uid) {
     return state.draft.secondaryIntentions.find(item => item.uid === uid) ?? null;
+  }
+
+  function findLinkedIntention(slot) {
+    if (!slot) {
+      return null;
+    }
+    return state.draft.secondaryIntentions.find(item => item.uid === slot.linkedIntentionUid)
+      ?? state.draft.secondaryIntentions.find(item => item.id === slot.intentionId)
+      ?? null;
+  }
+
+  function synchronizeLinkedIntentions() {
+    const used = new Set();
+    for (const slot of state.draft.secondarySlots) {
+      let intention = findLinkedIntention(slot);
+      if (!intention || used.has(intention.uid)) {
+        intention = state.draft.secondaryIntentions.find(item => !used.has(item.uid)) ?? null;
+      }
+      if (!intention) {
+        intention = createSecondaryIntention(state.locale);
+        state.draft.secondaryIntentions.push(intention);
+      }
+      slot.linkedIntentionUid = intention.uid;
+      slot.intentionId = intention.id;
+      used.add(intention.uid);
+    }
+
+    state.draft.secondaryIntentions = state.draft.secondaryIntentions.filter(intention => used.has(intention.uid));
   }
 
   function findSlot(ownerKind, uid) {
@@ -3415,6 +3662,32 @@ function mountApp(root) {
     }
   }
 
+  async function copyBindingToken(ownerKind, ownerUid, uid) {
+    const binding = findBinding(ownerKind, ownerUid, uid);
+    const parameter = nonEmpty(binding?.parameter);
+    if (!parameter) {
+      recalculate({
+        save: false,
+        actionStatus: createActionStatus(state.locale, "ui.copyPaste.bindingTokenEmpty", {}, "warning")
+      });
+      return;
+    }
+
+    try {
+      const token = `{$${parameter}}`;
+      await navigator.clipboard.writeText(token);
+      recalculate({
+        save: false,
+        actionStatus: createActionStatus(state.locale, "ui.copyPaste.bindingTokenCopied", { token })
+      });
+    } catch {
+      recalculate({
+        save: false,
+        actionStatus: createActionStatus(state.locale, "ui.export.copyFailed", {}, "error")
+      });
+    }
+  }
+
   function handleClick(event) {
     const target = event.target;
     if (!(target instanceof Element)) {
@@ -3431,16 +3704,42 @@ function mountApp(root) {
           render();
         }
       }
+      if (state.categoryDropdownOpen && !target.closest("[data-category-picker]")) {
+        state.categoryDropdownOpen = false;
+        render();
+      }
       return;
     }
 
     const action = button.dataset.action;
+    if (
+      state.categoryDropdownOpen &&
+      action !== "toggle-category-dropdown" &&
+      action !== "set-category" &&
+      !button.closest("[data-category-picker]")
+    ) {
+      state.categoryDropdownOpen = false;
+    }
+
     switch (action) {
       case "reset-draft":
         resetDraft();
         return;
       case "set-locale":
         setLocale(button.dataset.locale);
+        return;
+      case "set-theme":
+        setTheme(button.dataset.theme);
+        return;
+      case "toggle-category-dropdown":
+        state.categoryDropdownOpen = !state.categoryDropdownOpen;
+        render();
+        return;
+      case "set-category":
+        withMutation(() => {
+          state.draft.scenario.category = button.dataset.categoryId;
+          state.categoryDropdownOpen = false;
+        });
         return;
       case "open-modal":
         state.modal = button.dataset.modal;
@@ -3452,23 +3751,14 @@ function mountApp(root) {
         return;
       case "add-secondary-intention":
         withMutation(() => {
-          state.draft.secondaryIntentions.push(createSecondaryIntention(state.locale));
+          const intention = createSecondaryIntention(state.locale);
+          const slot = createSecondarySlot(intention.uid);
+          slot.intentionId = intention.id;
+          state.draft.secondaryIntentions.push(intention);
+          state.draft.secondarySlots.push(slot);
         });
         return;
       case "delete-secondary-intention":
-        withMutation(() => {
-          const uid = button.dataset.uid;
-          const intention = findSecondaryIntention(uid);
-          if (!intention) {
-            return;
-          }
-          state.draft.secondaryIntentions = state.draft.secondaryIntentions.filter(item => item.uid !== uid);
-          state.draft.secondarySlots.forEach(slot => {
-            if (slot.intentionId === intention.id) {
-              slot.intentionId = "";
-            }
-          });
-        });
         return;
       case "add-global-predicate":
         withMutation(() => {
@@ -3482,10 +3772,17 @@ function mountApp(root) {
         return;
       case "add-slot":
         withMutation(() => {
-          state.draft.secondarySlots.push(createSecondarySlot());
+          const intention = createSecondaryIntention(state.locale);
+          const slot = createSecondarySlot(intention.uid);
+          slot.intentionId = intention.id;
+          state.draft.secondaryIntentions.push(intention);
+          state.draft.secondarySlots.push(slot);
         });
         return;
       case "delete-slot":
+        if (!window.confirm(t(state.locale, "ui.confirmDeleteSlot"))) {
+          return;
+        }
         withMutation(() => {
           const slotUid = button.dataset.uid;
           const slot = findSlot("slot", slotUid);
@@ -3494,6 +3791,7 @@ function mountApp(root) {
           }
 
           state.draft.secondarySlots = state.draft.secondarySlots.filter(item => item.uid !== slotUid);
+          state.draft.secondaryIntentions = state.draft.secondaryIntentions.filter(item => item.uid !== slot.linkedIntentionUid);
           const removedSlotId = slot.slotId;
           for (const current of getAllSlots(state.draft)) {
             if (current.bindToSlot === removedSlotId) {
@@ -3513,6 +3811,41 @@ function mountApp(root) {
             });
           }
         });
+        return;
+      case "copy-intention-content":
+        {
+          const intention = button.dataset.entity === "owner-intention"
+            ? state.draft.ownerIntention
+            : findSecondaryIntention(button.dataset.uid);
+          if (!intention) {
+            return;
+          }
+          state.intentionClipboard = Object.fromEntries(INTENTION_CONTENT_FIELDS.map(field => [field, intention[field] ?? ""]));
+          recalculate({
+            save: false,
+            actionStatus: createActionStatus(state.locale, "ui.copyPaste.copied")
+          });
+        }
+        return;
+      case "paste-intention-content":
+        {
+          if (!state.intentionClipboard) {
+            return;
+          }
+          withMutation(() => {
+            const intention = button.dataset.entity === "owner-intention"
+              ? state.draft.ownerIntention
+              : findSecondaryIntention(button.dataset.uid);
+            if (!intention) {
+              return;
+            }
+            for (const field of INTENTION_CONTENT_FIELDS) {
+              intention[field] = state.intentionClipboard[field] ?? "";
+            }
+          }, {
+            actionStatus: createActionStatus(state.locale, "ui.copyPaste.pasted")
+          });
+        }
         return;
       case "add-slot-predicate":
         withMutation(() => {
@@ -3554,6 +3887,9 @@ function mountApp(root) {
           }
           slot.textParameterBindings = slot.textParameterBindings.filter(item => item.uid !== button.dataset.uid);
         });
+        return;
+      case "copy-binding-token":
+        copyBindingToken(button.dataset.ownerKind, button.dataset.ownerUid, button.dataset.uid);
         return;
       case "toggle-allow-same-actor":
         withMutation(() => {
@@ -3642,18 +3978,14 @@ function mountApp(root) {
   }
 
   function renderTopBar() {
+    const draftTitle = nonEmpty(state.draft.scenario.name) || state.draft.scenario.id || t(state.locale, "ui.untitledDraft");
     return `
-      <header class="hero">
-        <div>
-          <p class="eyebrow">${escapeHtml(t(state.locale, "ui.eyebrow"))}</p>
-          <h1>${escapeHtml(APP_TITLE)}</h1>
-          <p class="hero-copy">${escapeHtml(t(state.locale, "ui.hero"))}</p>
+      <header class="app-topbar">
+        <div class="brand-row">
+          <strong>${escapeHtml(APP_TITLE)}</strong>
+          <span>${escapeHtml(draftTitle)}</span>
         </div>
-        <div class="hero-actions">
-          <div class="topbar-controls">
-            <button type="button" data-action="open-modal" data-modal="${MODAL_TYPES.rules}">${escapeHtml(t(state.locale, "ui.rules"))}</button>
-            <button type="button" data-action="open-modal" data-modal="${MODAL_TYPES.categories}">${escapeHtml(t(state.locale, "ui.categories"))}</button>
-          </div>
+        <div class="topbar-actions">
           <div class="locale-switch" aria-label="${escapeHtml(t(state.locale, "ui.locale"))}">
             ${["ru", "en"].map(locale => `
               <button
@@ -3662,6 +3994,17 @@ function mountApp(root) {
                 data-action="set-locale"
                 data-locale="${locale}">
                 ${escapeHtml(getLocaleLabel(locale))}
+              </button>
+            `).join("")}
+          </div>
+          <div class="locale-switch" aria-label="${escapeHtml(t(state.locale, "ui.theme"))}">
+            ${["light", "dark"].map(theme => `
+              <button
+                type="button"
+                class="${theme === state.theme ? "is-active" : ""}"
+                data-action="set-theme"
+                data-theme="${theme}">
+                ${escapeHtml(t(state.locale, `ui.themes.${theme}`))}
               </button>
             `).join("")}
           </div>
@@ -3727,6 +4070,23 @@ function mountApp(root) {
     `;
   }
 
+  function renderValidationPanel() {
+    return `
+      <section class="editor-section validation-section">
+        <div class="section-header">
+          <div>
+            <h2>${escapeHtml(t(state.locale, "ui.validationExportTitle"))}</h2>
+            <p>${escapeHtml(t(state.locale, "ui.validationExportDescription"))}</p>
+          </div>
+        </div>
+        <div class="bottom-grid">
+          ${renderStatusPanel()}
+          ${renderIssuePanel()}
+        </div>
+      </section>
+    `;
+  }
+
   function renderTextField({
     entity,
     field,
@@ -3743,7 +4103,8 @@ function mountApp(root) {
     ownerKind = "",
     ownerUid = "",
     disabled = false,
-    dataListId = ""
+    dataListId = "",
+    help = ""
   }) {
     const counter = counterMax > 0 ? renderCounter(`${value ?? ""}`.length, counterMax) : "";
     const commonAttrs = `
@@ -3765,7 +4126,7 @@ function mountApp(root) {
 
     return `
       <label class="field">
-        <span>${escapeHtml(label)}</span>
+        ${renderFieldLabel(label, help)}
         ${control}
         ${renderHint(hint, counter)}
       </label>
@@ -3820,7 +4181,7 @@ function mountApp(root) {
 
     return `
       <div class="field">
-        <span>${escapeHtml(fieldText(state.locale, "values"))}</span>
+        ${renderFieldLabel(fieldText(state.locale, "values"), hintText(state.locale, "values"))}
         <div class="inline-editor">
           ${inputControl}
           <button
@@ -3896,7 +4257,7 @@ function mountApp(root) {
 
     return `
       <label class="field">
-        <span>${escapeHtml(fieldText(state.locale, "value"))}</span>
+        ${renderFieldLabel(fieldText(state.locale, "value"), hintText(state.locale, "value"))}
         ${valueControl}
       </label>
     `;
@@ -3907,7 +4268,7 @@ function mountApp(root) {
     return `
       <div class="field-grid two">
         <label class="field">
-          <span>${escapeHtml(fieldText(state.locale, "valueFrom"))}</span>
+          ${renderFieldLabel(fieldText(state.locale, "valueFrom"), hintText(state.locale, "valueFrom"))}
           <input
             type="${type}"
             value="${escapeHtml(predicate.valueFrom)}"
@@ -3918,7 +4279,7 @@ function mountApp(root) {
             data-field="valueFrom">
         </label>
         <label class="field">
-          <span>${escapeHtml(fieldText(state.locale, "valueTo"))}</span>
+          ${renderFieldLabel(fieldText(state.locale, "valueTo"), hintText(state.locale, "valueTo"))}
           <input
             type="${type}"
             value="${escapeHtml(predicate.valueTo)}"
@@ -3938,7 +4299,7 @@ function mountApp(root) {
 
     return `
       <label class="field">
-        <span>${escapeHtml(label)}</span>
+        ${renderFieldLabel(label, hintText(state.locale, "key"))}
         <select
           data-entity="predicate"
           data-owner-kind="${ownerKind}"
@@ -3970,7 +4331,7 @@ function mountApp(root) {
       const compareOptions = getSlotsForSelection(currentSlotId);
       return `
         <label class="field">
-          <span>${escapeHtml(fieldText(state.locale, "compareSlot"))}</span>
+          ${renderFieldLabel(fieldText(state.locale, "compareSlot"), hintText(state.locale, "compareSlot"))}
           <select
             data-entity="predicate"
             data-owner-kind="${ownerKind}"
@@ -4015,16 +4376,12 @@ function mountApp(root) {
       label: operatorLabel(state.locale, operator)
     }));
     const fieldDefinition = getFieldDefinition(predicate.scope, predicate.field);
-    const fieldHelp = predicate.scope === PREDICATE_SCOPES.round
-      ? hintText(state.locale, "globalPredicates")
-      : hintText(state.locale, "candidatePredicates");
 
     return `
       <section class="predicate-card">
         <div class="subsection-header tight">
           <div>
             <strong>${escapeHtml(title)}</strong>
-            <p>${escapeHtml(fieldHelp)}</p>
           </div>
           <button
             type="button"
@@ -4038,7 +4395,7 @@ function mountApp(root) {
 
         <div class="field-grid two">
           <label class="field">
-            <span>${escapeHtml(fieldText(state.locale, "field"))}</span>
+            ${renderFieldLabel(fieldText(state.locale, "field"), hintText(state.locale, "field"))}
             <select
               data-entity="predicate"
               data-owner-kind="${ownerKind}"
@@ -4049,7 +4406,7 @@ function mountApp(root) {
             </select>
           </label>
           <label class="field">
-            <span>${escapeHtml(state.locale === "ru" ? "Оператор" : "Operator")}</span>
+            ${renderFieldLabel(t(state.locale, "ui.fields.operator"), hintText(state.locale, "operator"))}
             <select
               data-entity="predicate"
               data-owner-kind="${ownerKind}"
@@ -4066,7 +4423,7 @@ function mountApp(root) {
     `;
   }
 
-  function renderBindingCard(binding, ownerKind, ownerUid) {
+  function renderBindingCard(binding, ownerKind, ownerUid, index) {
     const slotOptions = getSlotsForSelection(findSlot(ownerKind, ownerUid)?.slotId ?? "");
     const sourceOptions = Object.values(TEXT_BINDING_SOURCES).map(source => ({
       id: source,
@@ -4076,23 +4433,40 @@ function mountApp(root) {
       ? ROUND_TEXT_BINDING_FIELDS.map(field => ({ id: field.id, label: localized(state.locale, field.label) }))
       : TEXT_BINDING_FIELDS.map(field => ({ id: field.id, label: localized(state.locale, field.label) }));
 
+    const token = nonEmpty(binding.parameter) ? `{$${nonEmpty(binding.parameter)}}` : "";
+
     return `
-      <section class="subcard">
+      <section class="subcard text-binding-card">
         <div class="subsection-header tight">
-          <strong>${escapeHtml(fieldText(state.locale, "textBindings"))}</strong>
-          <button
-            type="button"
-            data-action="delete-binding"
-            data-owner-kind="${ownerKind}"
-            data-owner-uid="${ownerUid}"
-            data-uid="${binding.uid}">
-            ${escapeHtml(t(state.locale, "ui.delete"))}
-          </button>
+          <div>
+            <strong>${escapeHtml(t(state.locale, "ui.textParameterTitle", { index: index + 1 }))}</strong>
+            ${token ? `<code>${escapeHtml(token)}</code>` : ""}
+          </div>
+          <div class="button-row">
+            <button
+              type="button"
+              data-action="copy-binding-token"
+              data-owner-kind="${ownerKind}"
+              data-owner-uid="${ownerUid}"
+              data-uid="${binding.uid}"
+              title="${escapeHtml(token || t(state.locale, "ui.copyPaste.bindingTokenEmpty"))}"
+              ${token ? "" : "disabled"}>
+              ${escapeHtml(t(state.locale, "ui.copyPaste.copyBindingToken"))}
+            </button>
+            <button
+              type="button"
+              data-action="delete-binding"
+              data-owner-kind="${ownerKind}"
+              data-owner-uid="${ownerUid}"
+              data-uid="${binding.uid}">
+              ${escapeHtml(t(state.locale, "ui.delete"))}
+            </button>
+          </div>
         </div>
 
         <div class="field-grid four">
           <label class="field">
-            <span>${escapeHtml(fieldText(state.locale, "parameter"))}</span>
+            ${renderFieldLabel(fieldText(state.locale, "parameter"), hintText(state.locale, "parameter"))}
             <input
               type="text"
               value="${escapeHtml(binding.parameter)}"
@@ -4102,10 +4476,9 @@ function mountApp(root) {
               data-uid="${binding.uid}"
               data-field="parameter"
               placeholder="${escapeHtml(placeholderText(state.locale, "bindingParam"))}">
-            ${renderHint(hintText(state.locale, "parameter"))}
           </label>
             <label class="field">
-              <span>${escapeHtml(fieldText(state.locale, "source"))} ${renderHelpIcon(localized(state.locale, SOURCE_HELP_TEXT))}</span>
+              ${renderFieldLabel(fieldText(state.locale, "source"), localized(state.locale, SOURCE_HELP_TEXT))}
               <select
                 data-entity="binding"
                 data-owner-kind="${ownerKind}"
@@ -4117,7 +4490,7 @@ function mountApp(root) {
           </label>
           ${binding.source === TEXT_BINDING_SOURCES.slot ? `
             <label class="field">
-              <span>${escapeHtml(fieldText(state.locale, "slot"))}</span>
+              ${renderFieldLabel(fieldText(state.locale, "slot"), hintText(state.locale, "slot"))}
               <select
                 data-entity="binding"
                 data-owner-kind="${ownerKind}"
@@ -4133,7 +4506,7 @@ function mountApp(root) {
           ` : ""}
           ${binding.source === TEXT_BINDING_SOURCES.literal ? `
             <label class="field">
-              <span>${escapeHtml(fieldText(state.locale, "value"))}</span>
+              ${renderFieldLabel(fieldText(state.locale, "value"), hintText(state.locale, "value"))}
               <input
                 type="text"
                 value="${escapeHtml(binding.value)}"
@@ -4146,7 +4519,7 @@ function mountApp(root) {
             </label>
           ` : `
             <label class="field">
-              <span>${escapeHtml(fieldText(state.locale, "field"))}</span>
+              ${renderFieldLabel(fieldText(state.locale, "field"), hintText(state.locale, "field"))}
               <select
                 data-entity="binding"
                 data-owner-kind="${ownerKind}"
@@ -4162,7 +4535,11 @@ function mountApp(root) {
     `;
   }
 
-function renderIntentionEditor(intention, entity, title, description, canDelete = false) {
+function renderIntentionEditor(intention, entity, title, description, {
+    canDelete = false,
+    slot = null,
+    slotOwnerKind = ""
+  } = {}) {
     const locale = state.locale;
     const uid = entity === "secondary-intention" ? intention.uid : "";
     const sectionClass = entity === "owner-intention"
@@ -4172,6 +4549,11 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
       { id: VISIBILITY_TYPES.visible, label: localized(locale, VISIBILITY_LABELS.visible) },
       { id: VISIBILITY_TYPES.hidden, label: localized(locale, VISIBILITY_LABELS.hidden) }
     ];
+    const revealOptions = [
+      { id: REVEAL_TYPES.none, label: localized(locale, REVEAL_LABELS.none) },
+      { id: REVEAL_TYPES.timer, label: localized(locale, REVEAL_LABELS.timer) }
+    ];
+    const slotUid = slot?.uid ?? "";
 
     return `
       <section class="${sectionClass}">
@@ -4180,11 +4562,33 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
             <h2>${escapeHtml(title)}</h2>
             <p>${escapeHtml(description)}</p>
           </div>
-          ${canDelete ? `
-            <button type="button" data-action="delete-secondary-intention" data-uid="${uid}">
-              ${escapeHtml(t(locale, "ui.delete"))}
+          <div class="button-row">
+            <button
+              type="button"
+              data-action="copy-intention-content"
+              data-entity="${entity}"
+              data-uid="${uid}">
+              ${escapeHtml(t(locale, "ui.copyPaste.copy"))}
             </button>
-          ` : ""}
+            <button
+              type="button"
+              data-action="paste-intention-content"
+              data-entity="${entity}"
+              data-uid="${uid}"
+              ${state.intentionClipboard ? "" : "disabled"}>
+              ${escapeHtml(t(locale, "ui.copyPaste.paste"))}
+            </button>
+            ${canDelete ? `
+              <button type="button" data-action="delete-slot" data-uid="${slotUid}">
+                ${escapeHtml(t(locale, "ui.delete"))}
+              </button>
+            ` : ""}
+          </div>
+        </div>
+
+        <div class="intention-tabs" aria-label="${escapeHtml(t(locale, "ui.intentionTabs"))}">
+          <button type="button" class="is-active">${escapeHtml(t(locale, "ui.intentionTabOne"))}</button>
+          <button type="button" disabled>${escapeHtml(t(locale, "ui.intentionTabsFuture"))}</button>
         </div>
 
         <div class="field-grid two">
@@ -4225,6 +4629,7 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
             value: intention.summary,
             label: fieldText(locale, "summary"),
             hint: hintText(locale, "summary35"),
+            help: hintText(locale, "summaryTooltip"),
             maxLength: TEXT_LIMITS.summary,
             counterMax: TEXT_LIMITS.summary
           })}
@@ -4237,7 +4642,9 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
           value: intention.description,
           label: fieldText(locale, "description"),
           hint: hintText(locale, "description2000"),
-          rows: 4
+          rows: 5,
+          maxLength: TEXT_LIMITS.description,
+          counterMax: TEXT_LIMITS.description
         })}
         ${renderTextField({
           entity,
@@ -4246,7 +4653,10 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
           value: intention.oocInfo,
           label: fieldText(locale, "oocInfo"),
           hint: hintText(locale, "ooc500"),
-          rows: 3
+          help: hintText(locale, "oocInfoTooltip"),
+          rows: 3,
+          maxLength: TEXT_LIMITS.oocInfo,
+          counterMax: TEXT_LIMITS.oocInfo
         })}
         ${renderTextField({
           entity,
@@ -4255,37 +4665,78 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
           value: intention.copyableText,
           label: fieldText(locale, "copyableText"),
           hint: hintText(locale, "copy5000"),
-          rows: 4,
+          help: hintText(locale, "copyableTextTooltip"),
+          rows: 8,
           maxLength: TEXT_LIMITS.copyableText,
           counterMax: TEXT_LIMITS.copyableText
         })}
 
-        <div class="field-grid three">
-          <label class="field">
-            <span>${escapeHtml(fieldText(locale, "visibility"))}</span>
-            <select data-entity="${entity}" data-uid="${uid}" data-field="defaultVisibility">
-              ${renderSelectOptions(locale, visibilityOptions, intention.defaultVisibility)}
-            </select>
-          </label>
+        <div class="subsection visibility-combo">
+          <div class="subsection-header tight">
+            <strong>${escapeHtml(t(locale, "ui.visibilityAndReveal"))}</strong>
+          </div>
+          <div class="field-grid four">
+            <label class="field">
+              ${renderFieldLabel(fieldText(locale, "visibility"), hintText(locale, "defaultVisibility"))}
+              <select data-entity="${entity}" data-uid="${uid}" data-field="defaultVisibility">
+                ${renderSelectOptions(locale, visibilityOptions, intention.defaultVisibility)}
+              </select>
+            </label>
+            ${renderTextField({
+              entity,
+              uid,
+              field: "hiddenLabel",
+              value: intention.hiddenLabel,
+              label: fieldText(locale, "hiddenLabel"),
+              hint: hintText(locale, "hidden45"),
+              help: hintText(locale, "hiddenLabelTooltip"),
+              maxLength: TEXT_LIMITS.hiddenLabel,
+              counterMax: TEXT_LIMITS.hiddenLabel
+            })}
+            ${slot ? `
+              <label class="check-row">
+                <input
+                  type="checkbox"
+                  data-entity="${slotOwnerKind}"
+                  data-uid="${slotUid}"
+                  data-field="visibilityEnabled"
+                  data-value-type="checkbox"
+                  ${slot.visibilityEnabled ? "checked" : ""}>
+                <span>${escapeHtml(fieldText(locale, "visibilityOverride"))}</span>
+              </label>
+              <label class="field">
+                ${renderFieldLabel(fieldText(locale, "visibilityOverride"), hintText(locale, "visibilityOverride"))}
+                <select
+                  data-entity="${slotOwnerKind}"
+                  data-uid="${slotUid}"
+                  data-field="visibilityType"
+                  ${slot.visibilityEnabled ? "" : "disabled"}>
+                  ${renderSelectOptions(locale, visibilityOptions, slot.visibilityType)}
+                </select>
+              </label>
+              <label class="field">
+                <span>${escapeHtml(fieldText(locale, "reveal"))} ${renderHelpIcon(hintText(locale, "reveal"))}</span>
+                <select
+                  data-entity="${slotOwnerKind}"
+                  data-uid="${slotUid}"
+                  data-field="revealType"
+                  ${slot.visibilityEnabled && slot.visibilityType === VISIBILITY_TYPES.hidden ? "" : "disabled"}>
+                  ${renderSelectOptions(locale, revealOptions, slot.revealType)}
+                </select>
+              </label>
           ${renderTextField({
-            entity,
-            uid,
-            field: "hiddenLabel",
-            value: intention.hiddenLabel,
-            label: fieldText(locale, "hiddenLabel"),
-            hint: hintText(locale, "hidden45"),
-            maxLength: TEXT_LIMITS.hiddenLabel,
-            counterMax: TEXT_LIMITS.hiddenLabel
-          })}
-          ${renderTextField({
-            entity,
-            uid,
-            field: "creationDate",
-            value: intention.creationDate,
-            label: fieldText(locale, "creationDate"),
-            hint: hintText(locale, "date"),
-            placeholder: "2026-04-30"
-          })}
+            entity: slotOwnerKind,
+            uid: slotUid,
+            field: "revealMinutes",
+            value: slot.revealMinutes,
+                label: fieldText(locale, "revealMinutes"),
+                hint: hintText(locale, "revealMinutes"),
+                type: "number",
+                valueType: "number",
+                disabled: !(slot.visibilityEnabled && slot.visibilityType === VISIBILITY_TYPES.hidden && slot.revealType === REVEAL_TYPES.timer)
+              })}
+            ` : ""}
+          </div>
         </div>
 
         <div class="field-grid two">
@@ -4295,15 +4746,23 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
             field: "tagsInput",
             value: intention.tagsInput ?? "",
             label: fieldText(locale, "tags"),
-            hint: hintText(locale, "tags")
+            hint: hintText(locale, "tags"),
+            help: ""
           })}
           ${renderColorField(entity, "color", intention.color, uid)}
         </div>
 
+        ${renderTextField({
+          entity,
+          uid,
+          field: "creationDate",
+          value: intention.creationDate,
+          label: fieldText(locale, "creationDate"),
+          hint: hintText(locale, "date"),
+          placeholder: "2026-04-30"
+        })}
+
         <div class="subsection">
-          <div class="subsection-header tight">
-            <strong>${escapeHtml(fieldText(locale, "addIcon"))}</strong>
-          </div>
           <label class="check-row">
             <input
               type="checkbox"
@@ -4321,6 +4780,7 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
               field: "iconSprite",
               value: intention.iconSprite,
               label: fieldText(locale, "iconSprite"),
+              help: hintText(locale, "iconSprite"),
               disabled: !intention.iconEnabled,
               placeholder: placeholderText(locale, "iconSprite")
             })}
@@ -4330,6 +4790,7 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
               field: "iconState",
               value: intention.iconState,
               label: fieldText(locale, "iconState"),
+              help: hintText(locale, "iconState"),
               disabled: !intention.iconEnabled,
               placeholder: placeholderText(locale, "iconState")
             })}
@@ -4360,7 +4821,7 @@ function renderIntentionEditor(intention, entity, title, description, canDelete 
           </strong>
         </div>
         <div class="field-grid three">
-          <label class="check-row">
+          <label class="check-row check-row-centered">
             <input
               type="checkbox"
               data-entity="${ownerKind}"
@@ -4413,11 +4874,8 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
     const sectionClass = isOwnerSlot
       ? "editor-section slots-section owner-slot-section"
       : "editor-section slots-section secondary-slot-section";
-    const bindOptions = getSlotsForSelection(slot.slotId);
-    const allowOptions = getSlotsForSelection(slot.slotId);
-    const templateOptions = isOwnerSlot
-      ? [{ id: state.draft.ownerIntention.id, label: state.draft.ownerIntention.id }]
-      : getSecondaryIntentionOptions();
+    const bindOptions = isOwnerSlot ? [] : getSlotsForSelection(slot.slotId);
+    const allowOptions = isOwnerSlot ? [] : getSlotsForSelection(slot.slotId);
     const slotDisabledByBind = nonEmpty(slot.bindToSlot);
 
     return `
@@ -4434,7 +4892,7 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
           ` : ""}
         </div>
 
-        <div class="field-grid four">
+        <div class="field-grid three">
           ${renderTextField({
             entity: ownerKind,
             uid,
@@ -4442,34 +4900,24 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
             value: slot.slotId,
             label: fieldText(locale, "slotId"),
             hint: hintText(locale, "slotId"),
+            help: "",
             disabled: isOwnerSlot
           })}
-          <label class="field">
-            <span>${escapeHtml(fieldText(locale, "intentionTemplate"))}</span>
-            <select
-              data-entity="${ownerKind}"
-              data-uid="${uid}"
-              data-field="intentionId"
-              ${isOwnerSlot ? "disabled" : ""}>
-              ${renderSelectOptions(locale, templateOptions, slot.intentionId, {
-                allowEmpty: !isOwnerSlot,
-                emptyLabel: placeholderText(locale, "selectTemplate")
-              })}
-            </select>
-          </label>
-          <label class="field">
-            <span>${escapeHtml(fieldText(locale, "bindToSlot"))} ${renderHelpIcon(hintText(locale, "bindToSlot"))}</span>
-            <select
-              data-entity="${ownerKind}"
-              data-uid="${uid}"
-              data-field="bindToSlot">
-              ${renderSelectOptions(locale, bindOptions, slot.bindToSlot, {
-                allowEmpty: true,
-                emptyLabel: selectText(locale, "noBind")
-              })}
-            </select>
-          </label>
-          <label class="check-row">
+          ${isOwnerSlot ? "" : `
+            <label class="field">
+              ${renderFieldLabel(fieldText(locale, "bindToSlot"), hintText(locale, "bindToSlot"))}
+              <select
+                data-entity="${ownerKind}"
+                data-uid="${uid}"
+                data-field="bindToSlot">
+                ${renderSelectOptions(locale, bindOptions, slot.bindToSlot, {
+                  allowEmpty: true,
+                  emptyLabel: selectText(locale, "noBind")
+                })}
+              </select>
+            </label>
+          `}
+          <label class="check-row check-row-centered">
             <input
               type="checkbox"
               data-entity="${ownerKind}"
@@ -4478,11 +4926,11 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
               data-value-type="checkbox"
               ${slot.required ? "checked" : ""}
               ${isOwnerSlot ? "disabled" : ""}>
-            <span>${escapeHtml(fieldText(locale, "required"))}</span>
+            ${renderFieldLabel(fieldText(locale, "required"), hintText(locale, "required"))}
           </label>
         </div>
 
-        <div class="subsection">
+        ${isOwnerSlot ? "" : `<div class="subsection">
           <div class="subsection-header tight">
             <strong>${escapeHtml(fieldText(locale, "allowSameActorAs"))} ${renderHelpIcon(hintText(locale, "allowSameActorAs"))}</strong>
           </div>
@@ -4503,7 +4951,7 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
                 </label>
               `).join("")}
           </div>
-        </div>
+        </div>`}
 
         <div class="subsection">
           <div class="subsection-header">
@@ -4517,10 +4965,11 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
               ${escapeHtml(buttonText(locale, "addCandidatePredicate"))}
             </button>
           </div>
+          <p class="muted-text">${escapeHtml(hintText(locale, "candidatePredicates"))}</p>
           ${slotDisabledByBind
             ? `<p class="muted-text">${escapeHtml(hintText(locale, "bindToSlot"))}</p>`
             : slot.candidatePredicates.length === 0
-              ? `<p class="muted-text">${escapeHtml(t(locale, "ui.noIssues"))}</p>`
+              ? `<p class="muted-text">${escapeHtml(t(locale, "ui.emptySection"))}</p>`
               : slot.candidatePredicates.map((predicate, index) =>
                 renderPredicateCard(predicate, ownerKind, uid, predicateTitle(locale, index + 1))).join("")}
         </div>
@@ -4537,21 +4986,15 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
             </button>
           </div>
           ${slot.textParameterBindings.length === 0
-            ? `<p class="muted-text">${escapeHtml(t(locale, "ui.noIssues"))}</p>`
-            : slot.textParameterBindings.map(binding => renderBindingCard(binding, ownerKind, uid)).join("")}
+            ? `<p class="muted-text">${escapeHtml(t(locale, "ui.emptySection"))}</p>`
+            : slot.textParameterBindings.map((binding, index) => renderBindingCard(binding, ownerKind, uid, index)).join("")}
         </div>
-
-        ${renderVisibilityEditor(slot, ownerKind)}
       </section>
     `;
   }
 
   function renderScenarioSection() {
     const locale = state.locale;
-    const categoryOptions = CATEGORY_CATALOG.map(category => ({
-      id: category.id,
-      label: `${localized(locale, category.title)} · ${category.id}`
-    }));
 
     return `
       <section class="editor-section scenario-section">
@@ -4562,63 +5005,66 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
           </div>
         </div>
 
-        <div class="field-grid four">
-          ${renderTextField({
-            entity: "scenario",
-            field: "id",
-            value: state.draft.scenario.id,
-            label: fieldText(locale, "scenarioId"),
-            hint: hintText(locale, "scenarioId"),
-            placeholder: placeholderText(locale, "scenarioId")
-          })}
-          ${renderTextField({
-            entity: "scenario",
-            field: "name",
-            value: state.draft.scenario.name,
-            label: fieldText(locale, "humanName"),
-            hint: hintText(locale, "humanName"),
-            placeholder: placeholderText(locale, "scenarioName")
-          })}
-          <label class="field">
-            <span>${escapeHtml(fieldText(locale, "category"))}</span>
-            <select data-entity="scenario" data-field="category">
-              ${renderSelectOptions(locale, categoryOptions, state.draft.scenario.category)}
-            </select>
-            ${renderHint(hintText(locale, "category"))}
-          </label>
-          <label class="field">
-            <span>${escapeHtml(fieldText(locale, "weight"))}</span>
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value="${escapeHtml(state.draft.scenario.weight)}"
-              data-entity="scenario"
-              data-field="weight"
-              data-value-type="number">
-            ${renderHint(hintText(locale, "weight"))}
-          </label>
-        </div>
+        <div class="scenario-grid">
+          <div class="subsection flat">
+            <div class="subsection-header tight">
+              <strong>${escapeHtml(t(locale, "ui.scenarioCommon"))}</strong>
+            </div>
+            <div class="field-grid four">
+              ${renderTextField({
+                entity: "scenario",
+                field: "id",
+                value: state.draft.scenario.id,
+                label: fieldText(locale, "scenarioId"),
+                hint: hintText(locale, "scenarioId"),
+                help: "",
+                placeholder: placeholderText(locale, "scenarioId")
+              })}
+              ${renderTextField({
+                entity: "scenario",
+                field: "name",
+                value: state.draft.scenario.name,
+                label: fieldText(locale, "humanName"),
+                hint: hintText(locale, "humanName"),
+                placeholder: placeholderText(locale, "scenarioName")
+              })}
+              ${renderCategoryPicker()}
+              <label class="field">
+                <span>${escapeHtml(fieldText(locale, "weight"))}</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="${escapeHtml(state.draft.scenario.weight)}"
+                  data-entity="scenario"
+                  data-field="weight"
+                  data-value-type="number">
+                ${renderHint(hintText(locale, "weight"))}
+              </label>
+            </div>
 
-        <label class="check-row">
-          <input
-            type="checkbox"
-            data-entity="scenario"
-            data-field="enabled"
-            data-value-type="checkbox"
-            ${state.draft.scenario.enabled ? "checked" : ""}>
-          <span>${escapeHtml(fieldText(locale, "enabled"))}</span>
-        </label>
-
-        <div class="subsection">
-          <div class="subsection-header">
-            <strong>${escapeHtml(fieldText(locale, "globalPredicates"))} ${renderHelpIcon(hintText(locale, "globalPredicates"))}</strong>
-            <button type="button" data-action="add-global-predicate">${escapeHtml(buttonText(locale, "addGlobalPredicate"))}</button>
+            <label class="check-row">
+              <input
+                type="checkbox"
+                data-entity="scenario"
+                data-field="enabled"
+                data-value-type="checkbox"
+                ${state.draft.scenario.enabled ? "checked" : ""}>
+              ${renderFieldLabel(fieldText(locale, "enabled"), hintText(locale, "enabled"))}
+            </label>
           </div>
-          ${state.draft.globalPredicates.length === 0
-            ? `<p class="muted-text">${escapeHtml(hintText(locale, "globalPredicates"))}</p>`
-            : state.draft.globalPredicates.map((predicate, index) =>
-              renderPredicateCard(predicate, "global", "", predicateTitle(locale, index + 1))).join("")}
+
+          <div class="subsection">
+            <div class="subsection-header">
+              <strong>${escapeHtml(fieldText(locale, "globalPredicates"))} ${renderHelpIcon(hintText(locale, "globalPredicates"))}</strong>
+              <button type="button" data-action="add-global-predicate">${escapeHtml(buttonText(locale, "addGlobalPredicate"))}</button>
+            </div>
+            <p class="muted-text">${escapeHtml(hintText(locale, "globalPredicates"))}</p>
+            ${state.draft.globalPredicates.length === 0
+              ? `<p class="muted-text">${escapeHtml(t(locale, "ui.emptySection"))}</p>`
+              : state.draft.globalPredicates.map((predicate, index) =>
+                renderPredicateCard(predicate, "global", "", predicateTitle(locale, index + 1))).join("")}
+          </div>
         </div>
       </section>
     `;
@@ -4768,72 +5214,124 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
     return lists.join("");
   }
 
+  function renderCategoryPicker() {
+    const selectedCategory = CATEGORY_CATALOG.find(category => category.id === state.draft.scenario.category) ?? CATEGORY_CATALOG[0];
+    const selectedTitle = selectedCategory ? localized(state.locale, selectedCategory.title) : "";
+
+    return `
+      <div class="field category-field" data-category-picker="true">
+        ${renderFieldLabel(fieldText(state.locale, "category"), hintText(state.locale, "categoryTooltip"))}
+        <button
+          type="button"
+          class="category-trigger"
+          data-action="toggle-category-dropdown"
+          aria-haspopup="listbox"
+          aria-expanded="${state.categoryDropdownOpen ? "true" : "false"}">
+          <strong>${escapeHtml(selectedTitle)}</strong>
+          <span aria-hidden="true">v</span>
+        </button>
+        ${state.categoryDropdownOpen ? `
+          <div class="category-menu" role="listbox">
+            ${CATEGORY_CATALOG.map(category => `
+              <button
+                type="button"
+                class="category-option ${category.id === state.draft.scenario.category ? "is-active" : ""}"
+                data-action="set-category"
+                data-category-id="${escapeHtml(category.id)}"
+                role="option"
+                aria-selected="${category.id === state.draft.scenario.category ? "true" : "false"}">
+                <strong>${escapeHtml(localized(state.locale, category.title))}</strong>
+                <span>${escapeHtml(localized(state.locale, category.description))}</span>
+              </button>
+            `).join("")}
+          </div>
+        ` : ""}
+        ${renderHint(selectedCategory ? localized(state.locale, selectedCategory.description) : hintText(state.locale, "category"))}
+      </div>
+    `;
+  }
+
+  function renderOwnerPair() {
+    return `
+      <section class="slot-intention-pair owner-pair">
+        ${renderSlotEditor(
+          state.draft.ownerSlot,
+          "owner-slot",
+          t(state.locale, "ui.sections.ownerSlot"),
+          t(state.locale, "ui.sectionDescriptions.ownerSlot")
+        )}
+        ${renderIntentionEditor(
+          state.draft.ownerIntention,
+          "owner-intention",
+          t(state.locale, "ui.sections.ownerIntention"),
+          t(state.locale, "ui.sectionDescriptions.ownerIntention"),
+          {
+            slot: state.draft.ownerSlot,
+            slotOwnerKind: "owner-slot"
+          }
+        )}
+      </section>
+    `;
+  }
+
+  function renderSecondaryPairs() {
+    return `
+      <section class="section-group secondary-pairs-section">
+        <div class="section-header">
+          <div>
+            <h2>${escapeHtml(t(state.locale, "ui.sections.secondarySlots"))}</h2>
+            <p>${escapeHtml(t(state.locale, "ui.sectionDescriptions.secondarySlots"))}</p>
+          </div>
+          <button type="button" data-action="add-slot">${escapeHtml(buttonText(state.locale, "addSecondarySlot"))}</button>
+        </div>
+        ${state.draft.secondarySlots.length === 0
+          ? `<p class="muted-text">${escapeHtml(t(state.locale, "ui.noSecondaryPairs"))}</p>`
+          : state.draft.secondarySlots.map((slot, index) => {
+            const intention = findLinkedIntention(slot);
+            if (!intention) {
+              return "";
+            }
+            return `
+              <div class="slot-intention-pair">
+                ${renderSlotEditor(
+                  slot,
+                  "slot",
+                  secondarySlotTitle(state.locale, index + 1),
+                  t(state.locale, "ui.sectionDescriptions.secondarySlotPair"),
+                  false
+                )}
+                ${renderIntentionEditor(
+                  intention,
+                  "secondary-intention",
+                  secondaryTemplateTitle(state.locale, index + 1),
+                  t(state.locale, "ui.kinds.secondaryDescription"),
+                  {
+                    canDelete: true,
+                    slot,
+                    slotOwnerKind: "slot"
+                  }
+                )}
+              </div>
+            `;
+          }).join("")}
+      </section>
+    `;
+  }
+
   function render() {
     document.documentElement.lang = state.locale;
-    document.title = `${APP_TITLE} · ${getLocaleLabel(state.locale)}`;
+    document.documentElement.dataset.theme = state.theme;
+    document.title = `${APP_TITLE} - ${getLocaleLabel(state.locale)}`;
 
     root.innerHTML = `
       <div class="shell">
         ${renderTopBar()}
         <main class="layout">
-          <aside class="sidebar">
-            ${renderStatusPanel()}
-            ${renderIssuePanel()}
-          </aside>
-          <div class="content">
-            ${renderScenarioSection()}
-            ${renderIntentionEditor(
-              state.draft.ownerIntention,
-              "owner-intention",
-              t(state.locale, "ui.sections.ownerIntention"),
-              t(state.locale, "ui.sectionDescriptions.ownerIntention")
-            )}
-            <section class="section-group">
-              <div class="section-header">
-                <div>
-                  <h2>${escapeHtml(t(state.locale, "ui.sections.secondaryIntentions"))}</h2>
-                  <p>${escapeHtml(t(state.locale, "ui.sectionDescriptions.secondaryIntentions"))}</p>
-                </div>
-                <button type="button" data-action="add-secondary-intention">${escapeHtml(buttonText(state.locale, "addSecondaryTemplate"))}</button>
-              </div>
-                ${state.draft.secondaryIntentions.length === 0
-                  ? `<p class="muted-text">${escapeHtml(t(state.locale, "ui.noIssues"))}</p>`
-                  : state.draft.secondaryIntentions.map((intention, index) => renderIntentionEditor(
-                    intention,
-                    "secondary-intention",
-                    secondaryTemplateTitle(state.locale, index + 1),
-                    t(state.locale, "ui.kinds.secondaryDescription"),
-                    true
-                  )).join("")}
-              </section>
-            ${renderSlotEditor(
-              state.draft.ownerSlot,
-              "owner-slot",
-              t(state.locale, "ui.sections.ownerSlot"),
-              t(state.locale, "ui.sectionDescriptions.ownerSlot")
-            )}
-            <section class="section-group">
-              <div class="section-header">
-                <div>
-                  <h2>${escapeHtml(t(state.locale, "ui.sections.secondarySlots"))}</h2>
-                  <p>${escapeHtml(t(state.locale, "ui.sectionDescriptions.secondarySlots"))}</p>
-                </div>
-                <button type="button" data-action="add-slot">${escapeHtml(buttonText(state.locale, "addSecondarySlot"))}</button>
-              </div>
-                ${state.draft.secondarySlots.length === 0
-                  ? `<p class="muted-text">${escapeHtml(t(state.locale, "ui.noIssues"))}</p>`
-                  : state.draft.secondarySlots.map((slot, index) => renderSlotEditor(
-                    slot,
-                    "slot",
-                    secondarySlotTitle(state.locale, index + 1),
-                    state.locale === "ru"
-                      ? "Настройки конкретного secondary slot: связи, правила подбора, reveal и text bindings."
-                      : "Settings for this specific secondary slot: links, selection rules, reveal, and text bindings.",
-                    true
-                  )).join("")}
-            </section>
-            ${renderExportPanel()}
-          </div>
+          ${renderScenarioSection()}
+          ${renderOwnerPair()}
+          ${renderSecondaryPairs()}
+          ${renderValidationPanel()}
+          ${renderExportPanel()}
         </main>
         ${renderDataLists()}
         ${renderModal()}

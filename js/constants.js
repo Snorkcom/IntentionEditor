@@ -3,6 +3,7 @@ export const APP_VERSION = "1.1.0";
 
 export const STORAGE_KEY = "intention-editor.draft.v2";
 export const LOCALE_STORAGE_KEY = "intention-editor.locale.v1";
+export const THEME_STORAGE_KEY = "intention-editor.theme.v1";
 
 export const PREDICATE_SCOPES = {
   round: "round",

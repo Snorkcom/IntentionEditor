@@ -116,12 +116,13 @@ export function createOwnerSlot() {
   };
 }
 
-export function createSecondarySlot() {
+export function createSecondarySlot(linkedIntentionUid = "") {
   return {
     uid: nextUid("slot"),
     slotId: "",
     kind: INTENTION_KINDS.secondary,
     intentionId: "",
+    linkedIntentionUid,
     required: true,
     candidatePredicates: [],
     bindToSlot: "",
@@ -194,6 +195,7 @@ export function normalizeDraft(rawDraft, locale = "ru") {
     kind: INTENTION_KINDS.secondary
   }));
 
+  const linkedIntentionUids = new Set();
   draft.secondarySlots = (rawDraft.secondarySlots ?? []).map(slot => ({
     ...createSecondarySlot(),
     ...slot,
@@ -210,7 +212,21 @@ export function normalizeDraft(rawDraft, locale = "ru") {
       ...binding,
       uid: binding.uid ?? nextUid("binding")
     }))
-  }));
+  })).map(slot => {
+    let linked = draft.secondaryIntentions.find(intention => intention.uid === slot.linkedIntentionUid) ?? null;
+    if (!linked && slot.intentionId) {
+      linked = draft.secondaryIntentions.find(intention => intention.id === slot.intentionId) ?? null;
+    }
+    if (!linked) {
+      linked = draft.secondaryIntentions.find(intention => !linkedIntentionUids.has(intention.uid)) ?? null;
+    }
+    if (linked) {
+      slot.linkedIntentionUid = linked.uid;
+      slot.intentionId = linked.id;
+      linkedIntentionUids.add(linked.uid);
+    }
+    return slot;
+  });
 
   draft.globalPredicates = (rawDraft.globalPredicates ?? []).map(predicate => ({
     ...createPredicate("round"),

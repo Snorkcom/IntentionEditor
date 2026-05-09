@@ -4,7 +4,7 @@
 
 /* js/constants.js */
 const APP_TITLE = "IntentionEditor";
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.6.0";
 
 const STORAGE_KEY = "intention-editor.draft.v2";
 const LOCALE_STORAGE_KEY = "intention-editor.locale.v1";
@@ -340,7 +340,6 @@ const VALUE_DICTIONARIES = {
     "BeerDay",
     "Birthday13",
     "Birthday14",
-    "BisexualPrideDay",
     "BoxingDay",
     "CanadianThanksgiving",
     "ChineseNewYear",
@@ -359,12 +358,10 @@ const VALUE_DICTIONARIES = {
     "GarbageDay",
     "GroundhogDay",
     "Halloween",
-    "HumanRightsDay",
     "InternationalPicnicDay",
     "KindnessDay",
     "LaborDay",
     "LeapDay",
-    "LesbianDay",
     "LifeDay",
     "MayanDoomsday",
     "MikuDay",
@@ -372,18 +369,14 @@ const VALUE_DICTIONARIES = {
     "MoMMIDay",
     "MonkeyDay",
     "MothersDay",
-    "NationalComingOutDay",
     "NewYear",
     "OwlAndPussycatDay",
     "PiDay",
-    "PrideMonth",
     "ProgrammersDay",
     "RandomKindness",
     "SayingHelloDay",
     "Sinterklaas",
     "SmilingDay",
-    "SpiritDay",
-    "StonewallRiotsAnniversary",
     "StPatricksDay",
     "StupidQuestionsDay",
     "SummerSolstice",
@@ -391,7 +384,6 @@ const VALUE_DICTIONARIES = {
     "TeaDay",
     "Thanksgiving",
     "TowelDay",
-    "TransgenderRemembranceDay",
     "UFODay",
     "USIndependenceDay",
     "ValentinesDay",
@@ -632,30 +624,318 @@ const VALUE_DICTIONARIES = {
   ]
 };
 
+const GAME_MODE_LABELS = {
+  AllAtOnce: { ru: "Все и сразу", en: "All At Once" },
+  AllerAtOnce: { ru: "Aller At Once", en: "Aller At Once" },
+  Deathmatch: { ru: "Смертельный матч", en: "Deathmatch" },
+  Dynamic: { ru: "Динамический", en: "Dynamic" },
+  Extended: { ru: "Расширенный", en: "Extended" },
+  Greenshift: { ru: "Гриншифт", en: "Greenshift" },
+  KesslerSyndrome: { ru: "Синдром Кесслера", en: "Kessler Syndrome" },
+  Nukeops: { ru: "Ядерные оперативники", en: "Nuclear Operatives" },
+  Revolutionary: { ru: "Революция", en: "Revolutionary" },
+  Sandbox: { ru: "Песочница", en: "Sandbox" },
+  Secret: { ru: "Секрет", en: "Secret" },
+  Survival: { ru: "Выживание", en: "Survival" },
+  Traitor: { ru: "Предатели", en: "Traitor" },
+  Wizard: { ru: "Волшебник", en: "Wizard" },
+  Xenoborgs: { ru: "Ксеноборги", en: "Xenoborgs" },
+  Zombie: { ru: "Зомби", en: "Zombie" },
+  Zombieteors: { ru: "Зомби-метеоры", en: "Zombieteors" }
+};
+
+const EVENT_TAG_LABELS = {
+  AnimalsDay: { ru: "День животных", en: "Animals Day" },
+  AnzacDay: { ru: "День АНЗАК", en: "Anzac Day" },
+  AprilFoolDay: { ru: "День смеха", en: "April Fools Day" },
+  ArmisticeDay: { ru: "День перемирия", en: "Armistice Day" },
+  AutismAwarenessDay: { ru: "День осведомлённости об аутизме", en: "Autism Awareness Day" },
+  BastilleDay: { ru: "День взятия Бастилии", en: "Bastille Day" },
+  BeerDay: { ru: "День пива", en: "Beer Day" },
+  Birthday13: { ru: "День рождения Space Station 13", en: "Space Station 13 Birthday" },
+  Birthday14: { ru: "День рождения Space Station 14", en: "Space Station 14 Birthday" },
+  BoxingDay: { ru: "День подарков", en: "Boxing Day" },
+  CanadianThanksgiving: { ru: "Канадский День благодарения", en: "Canadian Thanksgiving" },
+  ChineseNewYear: { ru: "Китайский Новый год", en: "Chinese New Year" },
+  Christmas: { ru: "Рождество", en: "Christmas" },
+  CosmonauticsDay: { ru: "День космонавтики", en: "Cosmonautics Day" },
+  DoctorDay: { ru: "День врача", en: "Doctor's Day" },
+  EarthDay: { ru: "День Земли", en: "Earth Day" },
+  Easter: { ru: "Пасха", en: "Easter" },
+  FathersDay: { ru: "День отца", en: "Father's Day" },
+  FestiveSeason: { ru: "Праздничный сезон", en: "Festive Season" },
+  FirefighterDay: { ru: "День пожарного", en: "Firefighter's Day" },
+  FlowersDay: { ru: "День цветов", en: "Flowers Day" },
+  FridayThirteenth: { ru: "Пятница, 13-е", en: "Friday the 13th" },
+  FriendshipDay: { ru: "День дружбы", en: "Friendship Day" },
+  GarbageDay: { ru: "День мусора", en: "Garbage Day" },
+  GroundhogDay: { ru: "День сурка", en: "Groundhog Day" },
+  Halloween: { ru: "Хэллоуин", en: "Halloween" },
+  InternationalPicnicDay: { ru: "Международный день пикника", en: "International Picnic Day" },
+  KindnessDay: { ru: "День доброты", en: "Kindness Day" },
+  LaborDay: { ru: "День труда", en: "Labor Day" },
+  LeapDay: { ru: "Високосный день", en: "Leap Day" },
+  LifeDay: { ru: "День жизни", en: "Life Day" },
+  MayanDoomsday: { ru: "Годовщина конца света майя", en: "Mayan Doomsday Anniversary" },
+  MikuDay: { ru: "День Хацунэ Мику", en: "Hatsune Miku Day" },
+  MisterLizard: { ru: "День рождения мистера Ящера", en: "Mister Lizard's Birthday" },
+  MonkeyDay: { ru: "День обезьян", en: "Monkey Day" },
+  MothersDay: { ru: "День матери", en: "Mother's Day" },
+  NewYear: { ru: "Новый год", en: "New Year" },
+  OwlAndPussycatDay: { ru: "День совы и кошечки", en: "Owl and Pussycat Day" },
+  PiDay: { ru: "День числа Пи", en: "Pi Day" },
+  ProgrammersDay: { ru: "День программиста", en: "Programmers' Day" },
+  RandomKindness: { ru: "День случайных добрых дел", en: "Random Acts of Kindness Day" },
+  SayingHelloDay: { ru: "День приветствий", en: "Saying Hello Day" },
+  Sinterklaas: { ru: "Синтерклаас", en: "Sinterklaas" },
+  SmilingDay: { ru: "День улыбки", en: "Smiling Day" },
+  StPatricksDay: { ru: "День святого Патрика", en: "St. Patrick's Day" },
+  StupidQuestionsDay: { ru: "День глупых вопросов", en: "Stupid Questions Day" },
+  SummerSolstice: { ru: "Летнее солнцестояние", en: "Summer Solstice" },
+  TalkLikeAPirateDay: { ru: "День пиратской речи", en: "Talk-Like-a-Pirate Day" },
+  TeaDay: { ru: "День чая", en: "National Tea Day" },
+  Thanksgiving: { ru: "День благодарения", en: "Thanksgiving" },
+  TowelDay: { ru: "День полотенца", en: "Towel Day" },
+  UFODay: { ru: "День НЛО", en: "UFO Day" },
+  USIndependenceDay: { ru: "День независимости США", en: "US Independence Day" },
+  ValentinesDay: { ru: "День святого Валентина", en: "Valentine's Day" },
+  VeganDay: { ru: "День вегана", en: "Vegan Day" },
+  WritersDay: { ru: "День писателя", en: "Writer's Day" }
+};
+
+const OBJECTIVE_TYPE_LABEL_OVERRIDES = {
+  CarpRiftsObjective: { ru: "Открыть разломы карпов", en: "Open carp rifts objective" },
+  DieObjective: { ru: "Погибнуть", en: "Die objective" },
+  DoorjackObjective: { ru: "Взлом дверей", en: "Doorjack objective" },
+  EscapeShuttleObjective: { ru: "Побег на шаттле", en: "Escape on shuttle objective" },
+  EscapeThiefShuttleObjective: { ru: "Побег вора на шаттле", en: "Thief shuttle escape objective" },
+  HijackTradeStationObjective: { ru: "Угон торговой станции", en: "Hijack trade station objective" },
+  KillRandomHeadObjective: { ru: "Устранить случайного главу", en: "Kill random head objective" },
+  KillRandomPersonObjective: { ru: "Устранить случайного персонажа", en: "Kill random person objective" },
+  KillStationAiObjective: { ru: "Устранить ИИ станции", en: "Kill station AI objective" },
+  MassArrestObjective: { ru: "Массовые аресты", en: "Mass arrest objective" },
+  ParadoxCloneKillObjective: { ru: "Устранение парадоксального клона", en: "Paradox clone kill objective" },
+  ParadoxCloneLivingObjective: { ru: "Выживание парадоксального клона", en: "Paradox clone survival objective" },
+  RandomTraitorAliveObjective: { ru: "Сохранить предателя в живых", en: "Keep fellow traitor alive objective" },
+  RandomTraitorProgressObjective: { ru: "Помочь прогрессу предателя", en: "Help fellow traitor progress objective" },
+  SpiderChargeObjective: { ru: "Подрыв паучьего заряда", en: "Spider charge objective" },
+  StealResearchObjective: { ru: "Кража исследований", en: "Steal research objective" },
+  SupercritAnomaliesObjective: { ru: "Вывести аномалии в сверхкрит", en: "Supercritical anomalies objective" },
+  TerrorObjective: { ru: "Террор", en: "Terror objective" },
+  WizardDemonstrateObjective: { ru: "Продемонстрировать силу волшебника", en: "Wizard demonstration objective" },
+  WizardSurviveObjective: { ru: "Выжить волшебником", en: "Wizard survival objective" }
+};
+
+const OBJECTIVE_TYPE_TOKEN_RU = {
+  Altar: "алтарь",
+  Ame: "ДАМ",
+  Animal: "животное",
+  Base: "базовая",
+  Bedsheet: "простыня",
+  Bingus: "Бингус",
+  Bomb: "бомба",
+  Booze: "алко",
+  Captain: "капитан",
+  Cargo: "карго",
+  Cards: "карты",
+  Cartridge: "картридж",
+  Chem: "хим",
+  Chief: "шеф",
+  Circuitboard: "плата",
+  Clipboard: "планшет",
+  Clone: "клон",
+  Clothing: "одежда",
+  Cloak: "плащ",
+  CMO: "главврач",
+  Code: "коды",
+  Collection: "коллекция",
+  Corgi: "корги",
+  Crew: "экипаж",
+  Demonstrate: "демонстрация",
+  Dispenser: "раздатчик",
+  Door: "дверь",
+  Dragon: "дракон",
+  Engineer: "инженер",
+  Energy: "энергетический",
+  Eyes: "очки",
+  Fab: "фаб",
+  Fax: "факс",
+  Flatpack: "упаковка",
+  Flippo: "Флиппо",
+  Free: "свободная",
+  Freezer: "морозильник",
+  Gun: "пистолет",
+  Hand: "ручной",
+  Handguns: "пистолеты",
+  Hat: "шляпа",
+  Head: "голова",
+  Heater: "нагреватель",
+  Help: "помощь",
+  Huds: "HUD",
+  Hypospray: "гипоспрей",
+  Ian: "Иан",
+  ID: "ID",
+  Hijack: "угон",
+  Jetpack: "джетпак",
+  Keep: "сохранение",
+  Kill: "устранение",
+  Knuckle: "кастет",
+  LAMP: "ЛАМП",
+  List: "список",
+  Living: "выживание",
+  Magboots: "магбуты",
+  Magnum: "магнум",
+  Mail: "почта",
+  Mass: "массовый",
+  McGriff: "МакГрифф",
+  Meat: "мясо",
+  Medical: "медицинский",
+  Monitor: "монитор",
+  Morty: "Морти",
+  Nanotrasen: "Нанотрейзен",
+  Neck: "шея",
+  Ninja: "ниндзя",
+  Nuclear: "ядерный",
+  Nuke: "нюк",
+  Objective: "цель",
+  Officer: "офицер",
+  Part: "часть",
+  Paradox: "парадокс",
+  Person: "персонаж",
+  Plant: "растение",
+  Progress: "прогресс",
+  RD: "НИО",
+  Random: "случайный",
+  Renault: "Рено",
+  Research: "исследования",
+  Remote: "пульт",
+  Shiva: "Шива",
+  Social: "социальная",
+  Spider: "паучий",
+  Stamp: "штамп",
+  Station: "станция",
+  Steal: "кража",
+  Structure: "структура",
+  Survive: "выживание",
+  Sword: "меч",
+  Target: "цель",
+  Tech: "тех",
+  Technology: "технологический",
+  Teg: "Тег",
+  Teleporter: "телепортер",
+  Terror: "террор",
+  Thief: "вор",
+  Toilet: "туалет",
+  Toolbelt: "пояс для инструментов",
+  Trade: "торговый",
+  Traitor: "предатель",
+  Tropico: "Тропико",
+  Walter: "Вальтер",
+  Wanted: "разыскиваемых",
+  Warden: "смотритель",
+  Wizard: "волшебник",
+  Xeno: "ксено",
+  Artifact: "артефакт"
+};
+
+function splitCamelTokens(value) {
+  return value
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function translateObjectivePhraseRu(value) {
+  return splitCamelTokens(value)
+    .map(token => OBJECTIVE_TYPE_TOKEN_RU[token] ?? token)
+    .join(" ");
+}
+
+function buildObjectiveTypeRussianLabel(id) {
+  const override = OBJECTIVE_TYPE_LABEL_OVERRIDES[id];
+  if (override) {
+    return override.ru;
+  }
+
+  const raw = id.replace(/Objective$/, "");
+
+  if (raw.startsWith("Base")) {
+    const phrase = translateObjectivePhraseRu(raw.slice(4));
+    return phrase ? `Базовая цель: ${phrase}` : "Базовая цель";
+  }
+
+  if (raw.endsWith("StealCollection")) {
+    return `Кража коллекции: ${translateObjectivePhraseRu(raw.slice(0, -"StealCollection".length))}`;
+  }
+
+  if (raw.endsWith("StealStructure")) {
+    return `Кража структуры: ${translateObjectivePhraseRu(raw.slice(0, -"StealStructure".length))}`;
+  }
+
+  if (raw.endsWith("StealAnimal")) {
+    return `Кража животного: ${translateObjectivePhraseRu(raw.slice(0, -"StealAnimal".length))}`;
+  }
+
+  if (raw.endsWith("Steal")) {
+    return `Кража: ${translateObjectivePhraseRu(raw.slice(0, -"Steal".length))}`;
+  }
+
+  if (raw.endsWith("Survive")) {
+    return `Выживание: ${translateObjectivePhraseRu(raw.slice(0, -"Survive".length))}`;
+  }
+
+  if (raw.endsWith("Kill")) {
+    return `Устранение: ${translateObjectivePhraseRu(raw.slice(0, -"Kill".length))}`;
+  }
+
+  if (raw.endsWith("Living")) {
+    return `Выживание: ${translateObjectivePhraseRu(raw.slice(0, -"Living".length))}`;
+  }
+
+  if (raw.endsWith("HelpProgress")) {
+    return `Помощь прогрессу: ${translateObjectivePhraseRu(raw.slice(0, -"HelpProgress".length))}`;
+  }
+
+  if (raw.endsWith("KeepAlive")) {
+    return `Сохранить в живых: ${translateObjectivePhraseRu(raw.slice(0, -"KeepAlive".length))}`;
+  }
+
+  if (raw.endsWith("Demonstrate")) {
+    return `Демонстрация: ${translateObjectivePhraseRu(raw.slice(0, -"Demonstrate".length))}`;
+  }
+
+  return translateObjectivePhraseRu(raw);
+}
+
+const OBJECTIVE_TYPE_LABELS = Object.fromEntries(
+  VALUE_DICTIONARIES.objectiveTypes.map(id => [
+    id,
+    {
+      ru: buildObjectiveTypeRussianLabel(id),
+      en: OBJECTIVE_TYPE_LABEL_OVERRIDES[id]?.en ?? humanizeDictionaryValue(id)
+    }
+  ])
+);
+
 const LOCALIZED_DICTIONARY_LABELS = {
+  gameModes: GAME_MODE_LABELS,
+  eventTags: EVENT_TAG_LABELS,
+  objectiveTypes: OBJECTIVE_TYPE_LABELS,
   jobs: {
     AtmosphericTechnician: { ru: "Атмосферный техник", en: "Atmospheric Technician" },
     Bartender: { ru: "Бармен", en: "Bartender" },
-    Borg: { ru: "Киборг", en: "Cyborg" },
     Botanist: { ru: "Ботаник", en: "Botanist" },
     Captain: { ru: "Капитан", en: "Captain" },
-    CargoTechnician: { ru: "Техник снабжения", en: "Cargo Technician" },
-    CBURN: { ru: "Карантинный офицер ЦентКома", en: "CentComm Quarantine Officer" },
-    CentralCommandOfficial: { ru: "Представитель ЦентКома", en: "CentComm Official" },
+    CargoTechnician: { ru: "Грузчик", en: "Cargo Technician" },
     Chaplain: { ru: "Священник", en: "Chaplain" },
     Chef: { ru: "Повар", en: "Chef" },
     Chemist: { ru: "Химик", en: "Chemist" },
     ChiefEngineer: { ru: "Старший инженер", en: "Chief Engineer" },
     ChiefMedicalOfficer: { ru: "Главный врач", en: "Chief Medical Officer" },
     Clown: { ru: "Клоун", en: "Clown" },
-    DeathSquad: { ru: "Отряд смерти", en: "Death Squad" },
     Detective: { ru: "Детектив", en: "Detective" },
-    ERTChaplain: { ru: "Священник ОБР", en: "ERT Chaplain" },
-    ERTEngineer: { ru: "Инженер ОБР", en: "ERT Engineer" },
-    ERTJanitor: { ru: "Уборщик ОБР", en: "ERT Janitor" },
-    ERTLeader: { ru: "Лидер ОБР", en: "ERT Leader" },
-    ERTMedical: { ru: "Медик ОБР", en: "ERT Medic" },
-    ERTSecurity: { ru: "Офицер ОБР", en: "ERT Security" },
     HeadOfPersonnel: { ru: "Глава персонала", en: "Head of Personnel" },
     HeadOfSecurity: { ru: "Глава службы безопасности", en: "Head of Security" },
     Janitor: { ru: "Уборщик", en: "Janitor" },
@@ -672,38 +952,36 @@ const LOCALIZED_DICTIONARY_LABELS = {
     Reporter: { ru: "Репортёр", en: "Reporter" },
     ResearchAssistant: { ru: "Научный ассистент", en: "Research Assistant" },
     ResearchDirector: { ru: "Научный руководитель", en: "Research Director" },
-    SalvageSpecialist: { ru: "Специалист по утилизации", en: "Salvage Specialist" },
+    SalvageSpecialist: { ru: "Утилизатор", en: "Salvage Specialist" },
     Scientist: { ru: "Учёный", en: "Scientist" },
     SecurityCadet: { ru: "Кадет СБ", en: "Security Cadet" },
     SecurityOfficer: { ru: "Офицер СБ", en: "Security Officer" },
-    ServiceWorker: { ru: "Работник сервиса", en: "Service Worker" },
+    ServiceWorker: { ru: "Сервисный работник", en: "Service Worker" },
     StationAi: { ru: "ИИ станции", en: "Station AI" },
-    StationEngineer: { ru: "Инженер станции", en: "Station Engineer" },
+    StationEngineer: { ru: "Инженер", en: "Station Engineer" },
     TechnicalAssistant: { ru: "Технический ассистент", en: "Technical Assistant" },
-    Visitor: { ru: "Посетитель", en: "Visitor" },
-    Warden: { ru: "Смотритель", en: "Warden" }
+    Warden: { ru: "Смотритель", en: "Warden" },
+	Roboticist: { ru: "Робототехник", en: "Roboticist" },
+	Boxer: { ru: "Боксёр", en: "Boxer" },
+	Zookeeper: { ru: "Зоотехник", en: "Zookeeper" },
   },
   departments: {
     Cargo: { ru: "Снабжение", en: "Cargo" },
     CentralCommand: { ru: "Центральное командование", en: "Central Command" },
-    Civilian: { ru: "Гражданский", en: "Civilian" },
+    Civilian: { ru: "Сервисный", en: "Civilian" },
     Command: { ru: "Командование", en: "Command" },
     Engineering: { ru: "Инженерный", en: "Engineering" },
     Medical: { ru: "Медицинский", en: "Medical" },
     Science: { ru: "Научный", en: "Science" },
     Security: { ru: "Служба безопасности", en: "Security" },
-    Silicon: { ru: "Кремниевые формы жизни", en: "Silicon" },
-    Specific: { ru: "Станционный", en: "Station Specific" }
   },
   species: {
     Arachnid: { ru: "Арахнид", en: "Arachnid" },
     Diona: { ru: "Диона", en: "Diona" },
     Dwarf: { ru: "Дворф", en: "Dwarf" },
-    Gingerbread: { ru: "Имбирный человечек", en: "Gingerbread" },
     Human: { ru: "Человек", en: "Human" },
     Moth: { ru: "Моль", en: "Moth" },
     Reptilian: { ru: "Рептилоид", en: "Reptilian" },
-    Skeleton: { ru: "Скелет", en: "Skeleton" },
     SlimePerson: { ru: "Слаймолюд", en: "Slime Person" },
     Vox: { ru: "Вокс", en: "Vox" },
     Vulpkanin: { ru: "Вульпканин", en: "Vulpkanin" }
@@ -740,12 +1018,9 @@ const LOCALIZED_DICTIONARY_LABELS = {
   antagRoles: {
     Changeling: { ru: "Генокрад", en: "Changeling" },
     Dragon: { ru: "Космический дракон", en: "Space Dragon" },
-    GenericAntagonist: { ru: "Одиночный антагонист", en: "Solo Antagonist" },
-    GenericFreeAgent: { ru: "Свободный агент", en: "Free Agent" },
     GenericSiliconAntagonist: { ru: "Кремниевый антагонист", en: "Silicon Antagonist" },
-    GenericTeamAntagonist: { ru: "Командный антагонист", en: "Team Antagonist" },
     HeadRev: { ru: "Глава революции", en: "Head Revolutionary" },
-    InitialInfected: { ru: "Первый заражённый", en: "Initial Infected" },
+    InitialInfected: { ru: "Нулевой заражённый", en: "Initial Infected" },
     MothershipCore: { ru: "Ядро ксеноборга", en: "Xenoborg Core" },
     Nukeops: { ru: "Ядерный оперативник", en: "Nuclear Operative" },
     NukeopsCommander: { ru: "Командир ядерных оперативников", en: "Nuclear Operative Commander" },
@@ -753,7 +1028,7 @@ const LOCALIZED_DICTIONARY_LABELS = {
     ParadoxClone: { ru: "Парадоксальный клон", en: "Paradox Clone" },
     Rev: { ru: "Революционер", en: "Revolutionary" },
     SpaceNinja: { ru: "Космический ниндзя", en: "Space Ninja" },
-    SubvertedSilicon: { ru: "Взломанный кремний", en: "Subverted Silicon" },
+    SubvertedSilicon: { ru: "Взломанный киборг", en: "Subverted Silicon" },
     Survivor: { ru: "Выживший", en: "Survivor" },
     Thief: { ru: "Вор", en: "Thief" },
     Traitor: { ru: "Предатель", en: "Traitor" },
@@ -768,13 +1043,13 @@ const LOCALIZED_DICTIONARY_LABELS = {
 /* js/catalogs.js */
 const TEXT_BINDING_FIELDS = [
   { id: "characterName", label: { ru: "Имя персонажа", en: "Character name" } },
-  { id: "job", label: { ru: "Профессия", en: "Job" } },
+  { id: "job", label: { ru: "Должность", en: "Job" } },
   { id: "department", label: { ru: "Отдел", en: "Department" } },
   { id: "age", label: { ru: "Возраст", en: "Age" } },
   { id: "species", label: { ru: "Вид", en: "Species" } },
   { id: "sex", label: { ru: "Пол", en: "Sex" } },
   { id: "traits", label: { ru: "Черты", en: "Traits" } },
-  { id: "hasMindshield", label: { ru: "Есть mindshield", en: "Has mindshield" } },
+  { id: "hasMindshield", label: { ru: "Есть защита разума", en: "Has mindshield" } },
   { id: "antagRole", label: { ru: "Роли антагониста", en: "Antag roles" } },
   { id: "antagObjectiveType", label: { ru: "Типы целей антагониста", en: "Antag objective types" } },
   { id: "mindId", label: { ru: "MindId", en: "MindId" } },
@@ -846,7 +1121,7 @@ const FIELD_DEFINITIONS = {
     job: {
       type: "string",
       dictionary: "jobs",
-      label: { ru: "Профессия", en: "Job" }
+      label: { ru: "Должность", en: "Job" }
     },
     department: {
       type: "string",
@@ -976,11 +1251,11 @@ const STRINGS = {
         "export": "Экспорт"
       },
       "sectionDescriptions": {
-        "scenario": "Метаданные сценария и глобальные предикаты раунда.",
+        "scenario": "Основные параметры сценария и условия его участия в раунде.",
         "ownerIntention": "Обязательное намерение, которое всегда связано со слотом владельца сценария (owner).",
         "secondaryIntentions": "Переиспользуемая библиотека второстепенных шаблонов намерений.",
         "ownerSlot": "Основной слот владельца сценария (owner)",
-        "secondarySlots": "Слева отображаются второстепенные слоты, справа – связанные шаблоны намерений.",
+        "secondarySlots": "Слева – второстепенные слоты сценария, справа – связанные с ними шаблоны намерений.",
         "export": "Предварительный просмотр и загрузка готовых YAML/FTL-файлов",
         "secondarySlotPair": "Настройка второстепенного слота: повторное использование, условия подбора кандидатов и параметры текста."
       },
@@ -1010,7 +1285,7 @@ const STRINGS = {
         "required": "Обязательное",
         "bindToSlot": "Привязать к слоту",
         "allowSameActorAs": "Разрешить совпадение участника",
-        "candidatePredicates": "Условия кандидатов",
+        "candidatePredicates": "Условия выбора кандидата",
         "globalPredicates": "Глобальные условия",
         "textBindings": "Настройка текстовых параметров",
         "visibilityOverride": "Изменение видимости",
@@ -1029,10 +1304,11 @@ const STRINGS = {
         "operator": "Оператор"
       },
       "fieldHints": {
-        "scenarioId": "Уникальный идентификатор сценария. Используйте латинские буквы без пробелов, каждое слово начинайте с большой буквы: SecretMeeting.",
+        "scenarioIdTooltip": "Уникальный идентификатор сценария.",
+        "scenarioId": "Используйте латинские буквы без пробелов, каждое слово начинайте с большой буквы. Например, SecretMeetingScenario.",
         "humanName": "Название сценария для отображения и отладки.",
         "category": "Категория сценария",
-        "weight": "Целое число больше 0. Чем выше вес (weight), тем выше шанс выбора сценария в категории.",
+        "weight": "Вес сценария в категории (weight). Чем выше значение, тем чаще сценарий будет выбираться.",
         "title35": "До 35 символов",
         "summary35": "До 35 символов",
         "description2000": "До 2000 символов.",
@@ -1040,31 +1316,33 @@ const STRINGS = {
         "copy5000": "До 5000 символов.",
         "hidden45": "До 45 символов.",
         "date": "Формат ГГГГ-ММ-ДД. Например, 2026-12-23",
-        "tags": "Укажите через запятую теги, чтобы сценарий было проще найти и отфильтровать. Например: bureaucracy, blackmail и т.д.",
+        "tags": "Укажите через запятую теги, чтобы в дальнейшем упростить поиск сценария по темам, ролям и типам ситуаций.",
         "color": "Формат #RRGGBB или #RRGGBBAA.",
-        "templateId": "Уникальный идентификатор намерения. Используйте латинские буквы без пробелов, каждое слово начинайте с большой буквы: SecretMeetingIntention.",
+        "templateIdTooltip": "Уникальный идентификатор намерения.",
+        "templateId": "Используйте латинские буквы без пробелов, каждое слово начинайте с большой буквы. Например, SecretMeetingIntention.",
         "slotId": "Уникальный идентификатор слота внутри сценария.",
-        "author": "Имя автора намерения для отображения в карточке (если требуется)",
+        "author": "Имя автора намерения",
         "parameter": "Имя параметра для подстановки в текст, например partnerName.",
+        "source": "Откуда брать значение для параметра:\nself – из текущего участника,\nslot – из другого slot,\nround – из данных раунда,\nliteral – вручную заданный текст.",
         "bindToSlot": "bindToSlot. Выдать это намерение тому же участнику, который уже выбран в другом слоте.",
         "allowSameActorAs": "allowSameActorAs. Разрешить повторное использование участника из указанных слотов (для случайного выбора). По умолчанию каждый участник должен быть уникальным.",
-        "globalPredicates": "Глобальные условия раунда: режим раунда, время, количество активного экипажа и т.п.",
-        "candidatePredicates": "Условия, которым должен соответствовать кандидат.",
+        "globalPredicates": "Условия участия сценария в раунде: режим раунда, время, количество активного экипажа и другие параметры. \nСценарий участвует в распределении только при выполнении всех условий.",
+        "candidatePredicates": "Кандидат на слот должен соответствовать всем указанным условиям.",
         "visibilityOverride": "Задает видимость намерения вместо значения по умолчанию.",
         "reveal": "Тип раскрытия скрытого намерения. Сейчас поддерживается без раскрытия (none) или по таймеру (timer).",
-        "textBindings": "Текстовые параметры для однократной подстановки в FTL-текст при назначении. Используются для данных персонажа из слота сценария, названия станции и др. Нажмите кнопку 'Копировать параметр' и вставьте его в текстовое содержимое.",
+        "textBindings": "Параметры для автоматической подстановки значений в текст. В готовом тексте параметр будет заменён на соответствующие данные, например имя персонажа, должность, название станции и другие значения. \nНажмите «Копировать параметр» и вставьте его в нужное текстовое поле шаблона намерения.",
         "defaultVisibility": "Базовая видимость намерения (может быть изменена в сценарии). Чтобы скрыть, выберите hidden.",
         "revealMinutes": "Время в минутах до раскрытия намерения.",
-        "categoryTooltip": "Категория определяет правила распределения сценария (на раунд и персонажа) и внешний вид намерений (иконка и цвет).",
-        "enabled": "Если выключено, сценарий не будет участвовать в автоматическом распределении.",
-        "field": "Данные кандидата или раунда, которые используются для проверки условия. Для значений времени формат 00:00:00",
-        "operator": "Способ сравнения выбранного поля.",
+        "categoryTooltip": "Категория определяет правила распределения сценария (на раунд и персонажа) и стандартный внешний вид намерений (иконка и цвет).",
+        "enabled": "Если выключено, то сценарий не будет участвовать в автоматическом распределении.",
+        "field": "Поле данных, по которому проверяется условие. \nЗначения времени указываются в формате 00:00:00.",
+        "operator": "Способ сравнения выбранного поля. \nОператоры sameAs и notSameAs доступны при наличии других слотов.",
         "value": "Одиночное значение для сравнения. ",
         "values": "Список допустимых или запрещённых значений.",
         "valueFrom": "Нижняя граница диапазона.",
         "valueTo": "Верхняя граница диапазона.",
         "compareSlot": "Другой слот, используемый для сравнения с текущим значением.",
-        "copyableTextTooltip": "Текст, который игрок сможет скопировать из карточки намерения.",
+        "copyableTextTooltip": "Готовый текстовый материал для сценария, который игрок может скопировать и использовать в отыгрыше. \nНапример, ответ, обращение, петиция, заявление, жалоба, листовка, объявление, письмо, песня, стихотворение, заметка, отчёт и тому подобное.",
         "summaryTooltip": "Короткое описание для компактного отображения на карточке намерения.",
         "oocInfoTooltip": "Пояснение вне роли (OOC): как отыгрывать намерение, какие рамки поведения допустимы и чего следует избегать.",
         "hiddenLabelTooltip": "Название, отображаемое до раскрытия скрытого намерения.",
@@ -1090,22 +1368,27 @@ const STRINGS = {
       },
       "placeholders": {
         "scenarioId": "ScenarioExampleNew",
-        "scenarioName": "Лучший сценарий",
-        "templateId": "IntentionExamplePrimary",
+        "scenarioName": "Имя сценария",
+        "templateId": "IntentionExampleNew",
+        "tags": "traitor, bureaucracy, positive, command",
         "color": "#AABBCCFF",
         "iconSprite": "/Textures/Interface/Misc/job_icons.rsi",
         "iconState": "Passenger",
-        "bindingParam": "Например, partnerName",
+        "bindingParam": "newParameter",
         "literal": "Статический текст",
         "addValue": "Добавить значение",
         "selectTemplate": "Выбери шаблон",
         "selectSlot": "Выбери слот",
-        "selectValue": "Выбери значение"
+        "selectValue": "Выбери значение",
+        "searchValue": "Поиск значения"
       },
       "select": {
         "noBind": "Не использовать bind",
-        "none": "—"
+        "none": "—",
+        "clearValue": "Очистить выбор",
+        "noMatches": "Нет совпадений"
       },
+      "searchValueAria": "Поиск по значениям словаря",
       "export": {
         "blocked": "Сначала исправь ошибки валидации. Экспорт заблокирован.",
         "copied": "Содержимое {filename} скопировано в буфер.",
@@ -1359,6 +1642,7 @@ const STRINGS = {
         "operator": "Operator"
       },
       "fieldHints": {
+        "scenarioIdTooltip": "Unique scenario identifier.",
         "scenarioId": "Unique scenario prototype id. ASCII-style PascalCase is recommended.",
         "humanName": "Human-readable scenario name for tooling and debug output.",
         "category": "Category from requirements. The YAML export uses the category id.",
@@ -1372,10 +1656,12 @@ const STRINGS = {
         "date": "Format: YYYY-MM-DD.",
         "tags": "Comma-separated. A trailing comma is allowed and will be cleaned during export.",
         "color": "Format: #RRGGBB or #RRGGBBAA.",
-        "templateId": "Unique intention template id within the package.",
+        "templateIdTooltip": "Unique intention identifier.",
+        "templateId": "Use ASCII letters without spaces; start each word with a capital letter: SecretMeetingIntention.",
         "slotId": "Unique slot id within the scenario.",
         "author": "Short author label if you want it on the card.",
         "parameter": "FTL parameter name, for example partnerName.",
+        "source": "Where the parameter value comes from:\nself - current participant,\nslot - another slot,\nround - round data,\nliteral - manually entered text.",
         "bindToSlot": "Assign this intention to the same participant already selected in another slot.",
         "allowSameActorAs": "Allow reusing the participant from selected slots, without forcing it.",
         "globalPredicates": "Round-wide checks. They only use round fields from the snapshot.",
@@ -1422,6 +1708,7 @@ const STRINGS = {
         "scenarioId": "ScenarioCardDebt",
         "scenarioName": "Card debt",
         "templateId": "IntentionExamplePrimary",
+        "tags": "traitor, bureaucracy, positive, command",
         "color": "#AABBCCFF",
         "iconSprite": "/Textures/Interface/Misc/job_icons.rsi",
         "iconState": "Passenger",
@@ -1430,12 +1717,16 @@ const STRINGS = {
         "addValue": "Add value",
         "selectTemplate": "Choose template",
         "selectSlot": "Choose slot",
-        "selectValue": "Choose value"
+        "selectValue": "Choose value",
+        "searchValue": "Search value"
       },
       "select": {
         "noBind": "No bind",
-        "none": "—"
+        "none": "—",
+        "clearValue": "Clear selection",
+        "noMatches": "No matches found"
       },
+      "searchValueAria": "Search dictionary values",
       "export": {
         "blocked": "Fix validation errors first. Export is blocked.",
         "copied": "{filename} was copied to the clipboard.",
@@ -1720,8 +2011,8 @@ function localizedSeed(locale) {
   return {
     scenarioName: "Новый сценарий",
     ownerName: "Основное намерение",
-    ownerDescription: "Кратко опишите, какую сцену или инициативу запускает владелец сценария.",
-    oocInfo: "Это ролевой ориентир, а не обязательная цель."
+    ownerDescription: "Опишите сцену, ситуацию или инициативу, вокруг которой строится сценарий.",
+    oocInfo: "Это ролевой ориентир для отыгрыша, а не обязательная задача. Другие игроки не обязаны вам подыгрывать. Соблюдайте правила сервера."
   };
 }
 
@@ -1765,11 +2056,11 @@ function createOwnerIntention(locale = "ru") {
     defaultVisibility: VISIBILITY_TYPES.visible,
     hiddenLabel: "",
     tags: ["starter"],
-    tagsInput: "starter",
+    tagsInput: "",
     iconEnabled: false,
     iconSprite: "",
     iconState: "",
-    color: "#6DA9E4FF",
+    color: "",
     author: "",
     creationDate: todayIsoDate()
   });
@@ -1779,7 +2070,7 @@ function createSecondaryIntention(locale = "ru") {
   const seed = localizedSeed(locale);
   return ensureTagsBuffer({
     uid: nextUid("intention"),
-    id: "",
+    id: "IntentionNewSecondary",
     kind: INTENTION_KINDS.secondary,
     name: "",
     summary: "",
@@ -1793,7 +2084,7 @@ function createSecondaryIntention(locale = "ru") {
     iconEnabled: false,
     iconSprite: "",
     iconState: "",
-    color: "#A2C9A8FF",
+    color: "",
     author: "",
     creationDate: todayIsoDate()
   });
@@ -3081,11 +3372,6 @@ const SOURCE_LABELS = {
   literal: { ru: "literal", en: "literal" }
 };
 
-const SOURCE_HELP_TEXT = {
-  ru: "Откуда брать значение для параметра: self — из текущего участника, slot — из другого slot, round — из данных раунда, literal — вручную заданный текст.",
-  en: "Where the parameter value comes from: self — current participant, slot — another slot, round — round data, literal — manually entered text."
-};
-
 const BOOLEAN_OPTIONS = [
   { id: "true", label: { ru: "true · да", en: "true" } },
   { id: "false", label: { ru: "false · нет", en: "false" } }
@@ -3255,6 +3541,12 @@ function mountApp(root) {
     actionStatus: null,
     intentionClipboard: null,
     categoryDropdownOpen: false,
+    searchableDropdown: {
+      openId: "",
+      filter: ""
+    },
+    predicateValueBuffers: {},
+    pendingFocus: null,
     modal: null
   };
 
@@ -3284,6 +3576,7 @@ function mountApp(root) {
       ownerKind: active.dataset.ownerKind ?? "",
       ownerUid: active.dataset.ownerUid ?? "",
       valueBuffer: active.dataset.valueBuffer ?? "",
+      searchableFilterId: active.dataset.searchableFilterId ?? "",
       selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
       selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null
     };
@@ -3297,6 +3590,8 @@ function mountApp(root) {
     let selector = "";
     if (snapshot.valueBuffer) {
       selector = `[data-value-buffer="${snapshot.valueBuffer}"]`;
+    } else if (snapshot.searchableFilterId) {
+      selector = `[data-searchable-filter-id="${snapshot.searchableFilterId}"]`;
     } else if (snapshot.entity && snapshot.field) {
       selector = [
         `[data-entity="${snapshot.entity}"]`,
@@ -3311,25 +3606,12 @@ function mountApp(root) {
       return;
     }
 
-    const next = root.querySelector(selector);
-    if (!(next instanceof HTMLInputElement || next instanceof HTMLTextAreaElement || next instanceof HTMLSelectElement)) {
-      return;
-    }
-
-    next.focus({ preventScroll: true });
-    if ((next instanceof HTMLInputElement || next instanceof HTMLTextAreaElement)
-      && snapshot.selectionStart !== null
-      && snapshot.selectionEnd !== null) {
-      try {
-        next.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
-      } catch {
-        // noop
-      }
-    }
+    queueFocus(selector, snapshot.selectionStart, snapshot.selectionEnd);
   }
 
   function recalculate({ save = true, actionStatus = null, normalizeTagBuffers = false } = {}) {
     const focusSnapshot = captureFocusSnapshot();
+    restoreFocusSnapshot(focusSnapshot);
     state.draft.ownerSlot.intentionId = state.draft.ownerIntention.id;
     synchronizeLinkedIntentions();
     state.draft.lastUpdatedAt = new Date().toISOString();
@@ -3341,7 +3623,34 @@ function mountApp(root) {
     }
     state.actionStatus = actionStatus;
     render();
-    restoreFocusSnapshot(focusSnapshot);
+  }
+
+  function queueFocus(selector, selectionStart = null, selectionEnd = null) {
+    state.pendingFocus = { selector, selectionStart, selectionEnd };
+  }
+
+  function applyPendingFocus() {
+    if (!state.pendingFocus) {
+      return;
+    }
+
+    const pending = state.pendingFocus;
+    state.pendingFocus = null;
+    requestAnimationFrame(() => {
+      const next = root.querySelector(pending.selector);
+      if (!(next instanceof HTMLInputElement || next instanceof HTMLTextAreaElement || next instanceof HTMLSelectElement)) {
+        return;
+      }
+
+      next.focus({ preventScroll: true });
+      if (pending.selectionStart !== null && pending.selectionEnd !== null) {
+        try {
+          next.setSelectionRange(pending.selectionStart, pending.selectionEnd);
+        } catch {
+          // noop
+        }
+      }
+    });
   }
 
   function setLocale(nextLocale) {
@@ -3435,6 +3744,43 @@ function mountApp(root) {
         id: intention.id,
         label: `${intention.id} · ${intention.name || t(state.locale, "ui.choose")}`
       }));
+  }
+
+  function getSearchableOptionLabel(option) {
+    return typeof option.label === "string"
+      ? option.label
+      : localized(state.locale, option.label);
+  }
+
+  function filterSearchableOptions(options, filter) {
+    const normalizedFilter = filter.trim().toLocaleLowerCase();
+    if (!normalizedFilter) {
+      return options;
+    }
+
+    return options.filter(option => {
+      const label = getSearchableOptionLabel(option).toLocaleLowerCase();
+      const id = option.id.toLocaleLowerCase();
+      return label.includes(normalizedFilter) || id.includes(normalizedFilter);
+    });
+  }
+
+  function closeSearchableDropdown() {
+    state.searchableDropdown.openId = "";
+    state.searchableDropdown.filter = "";
+  }
+
+  function setSearchableDropdownOpen(dropdownId, open) {
+    if (open) {
+      state.searchableDropdown.openId = dropdownId;
+      state.searchableDropdown.filter = "";
+      queueFocus(`[data-searchable-filter-id="${dropdownId}"]`);
+      render();
+      return;
+    }
+
+    closeSearchableDropdown();
+    render();
   }
 
   function normalizePredicate(predicate, ownerKind, ownerUid) {
@@ -3708,6 +4054,10 @@ function mountApp(root) {
         state.categoryDropdownOpen = false;
         render();
       }
+      if (state.searchableDropdown.openId && !target.closest("[data-searchable-dropdown]")) {
+        closeSearchableDropdown();
+        render();
+      }
       return;
     }
 
@@ -3719,6 +4069,17 @@ function mountApp(root) {
       !button.closest("[data-category-picker]")
     ) {
       state.categoryDropdownOpen = false;
+    }
+    if (
+      state.searchableDropdown.openId &&
+      ![
+        "toggle-searchable-dropdown",
+        "select-searchable-value",
+        "clear-searchable-value"
+      ].includes(action) &&
+      !button.closest("[data-searchable-dropdown]")
+    ) {
+      closeSearchableDropdown();
     }
 
     switch (action) {
@@ -3739,6 +4100,52 @@ function mountApp(root) {
         withMutation(() => {
           state.draft.scenario.category = button.dataset.categoryId;
           state.categoryDropdownOpen = false;
+        });
+        return;
+      case "toggle-searchable-dropdown":
+        setSearchableDropdownOpen(
+          button.dataset.dropdownId,
+          state.searchableDropdown.openId !== button.dataset.dropdownId
+        );
+        return;
+      case "select-searchable-value":
+        if (button.dataset.mode === "buffer") {
+          state.predicateValueBuffers[button.dataset.uid] = button.dataset.value ?? "";
+          closeSearchableDropdown();
+          render();
+          return;
+        }
+        withMutation(() => {
+          const predicate = findPredicate(button.dataset.ownerKind, button.dataset.ownerUid, button.dataset.uid);
+          if (!predicate) {
+            return;
+          }
+          if (button.dataset.mode === "key") {
+            predicate.key = button.dataset.value ?? "";
+          } else {
+            predicate.value = button.dataset.value ?? "";
+          }
+          closeSearchableDropdown();
+        });
+        return;
+      case "clear-searchable-value":
+        if (button.dataset.mode === "buffer") {
+          state.predicateValueBuffers[button.dataset.uid] = "";
+          closeSearchableDropdown();
+          render();
+          return;
+        }
+        withMutation(() => {
+          const predicate = findPredicate(button.dataset.ownerKind, button.dataset.ownerUid, button.dataset.uid);
+          if (!predicate) {
+            return;
+          }
+          if (button.dataset.mode === "key") {
+            predicate.key = "";
+          } else {
+            predicate.value = "";
+          }
+          closeSearchableDropdown();
         });
         return;
       case "open-modal":
@@ -3911,11 +4318,12 @@ function mountApp(root) {
             return;
           }
           const input = root.querySelector(`[data-value-buffer="${button.dataset.uid}"]`);
-          const value = nonEmpty(input?.value);
+          const value = nonEmpty(state.predicateValueBuffers[button.dataset.uid] ?? input?.value);
           if (!value) {
             return;
           }
           predicate.values = [...predicate.values, value];
+          state.predicateValueBuffers[button.dataset.uid] = "";
           if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
             input.value = "";
           }
@@ -3943,6 +4351,17 @@ function mountApp(root) {
   function handleInput(event) {
     const target = event.target;
     if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
+      return;
+    }
+
+    if (target.dataset.searchableFilterId) {
+      state.searchableDropdown.filter = target.value;
+      queueFocus(
+        `[data-searchable-filter-id="${target.dataset.searchableFilterId}"]`,
+        target.selectionStart ?? null,
+        target.selectionEnd ?? null
+      );
+      render();
       return;
     }
 
@@ -4153,36 +4572,104 @@ function mountApp(root) {
     `;
   }
 
+  function renderSearchableDropdown({
+    dropdownId,
+    selectedValue,
+    options,
+    placeholder,
+    mode,
+    uid,
+    ownerKind = "",
+    ownerUid = ""
+  }) {
+    const isOpen = state.searchableDropdown.openId === dropdownId;
+    const filteredOptions = filterSearchableOptions(options, isOpen ? state.searchableDropdown.filter : "");
+    const selectedOption = options.find(option => option.id === selectedValue) ?? null;
+    const selectedLabel = selectedOption ? getSearchableOptionLabel(selectedOption) : placeholder;
+
+    return `
+      <div class="searchable-dropdown" data-searchable-dropdown="true">
+        <button
+          type="button"
+          class="searchable-trigger"
+          data-action="toggle-searchable-dropdown"
+          data-dropdown-id="${escapeHtml(dropdownId)}"
+          aria-haspopup="listbox"
+          aria-expanded="${isOpen ? "true" : "false"}">
+          <span class="${selectedOption ? "is-selected" : "is-placeholder"}">${escapeHtml(selectedLabel)}</span>
+          <span aria-hidden="true">v</span>
+        </button>
+        ${isOpen ? `
+          <div class="searchable-menu" role="listbox">
+            <input
+              type="text"
+              class="searchable-filter"
+              value="${escapeHtml(state.searchableDropdown.filter)}"
+              data-searchable-filter-id="${escapeHtml(dropdownId)}"
+              placeholder="${escapeHtml(placeholderText(state.locale, "searchValue"))}"
+              aria-label="${escapeHtml(t(state.locale, "ui.searchValueAria"))}">
+            <button
+              type="button"
+              class="searchable-option searchable-option-clear"
+              data-action="clear-searchable-value"
+              data-dropdown-id="${escapeHtml(dropdownId)}"
+              data-mode="${escapeHtml(mode)}"
+              data-uid="${escapeHtml(uid)}"
+              ${ownerKind ? `data-owner-kind="${escapeHtml(ownerKind)}"` : ""}
+              ${ownerUid ? `data-owner-uid="${escapeHtml(ownerUid)}"` : ""}>
+              ${escapeHtml(selectText(state.locale, "clearValue"))}
+            </button>
+            <div class="searchable-options">
+              ${filteredOptions.length > 0 ? filteredOptions.map(option => `
+                <button
+                  type="button"
+                  class="searchable-option ${option.id === selectedValue ? "is-active" : ""}"
+                  data-action="select-searchable-value"
+                  data-dropdown-id="${escapeHtml(dropdownId)}"
+                  data-mode="${escapeHtml(mode)}"
+                  data-uid="${escapeHtml(uid)}"
+                  data-value="${escapeHtml(option.id)}"
+                  ${ownerKind ? `data-owner-kind="${escapeHtml(ownerKind)}"` : ""}
+                  ${ownerUid ? `data-owner-uid="${escapeHtml(ownerUid)}"` : ""}
+                  role="option"
+                  aria-selected="${option.id === selectedValue ? "true" : "false"}">
+                  <strong>${escapeHtml(option.id)}</strong>
+                  <span>${escapeHtml(getSearchableOptionLabel(option))}</span>
+                </button>
+              `).join("") : `<div class="searchable-empty">${escapeHtml(selectText(state.locale, "noMatches"))}</div>`}
+            </div>
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }
+
   function renderPredicateValueList(predicate, ownerKind, ownerUid, fieldDefinition) {
     const dictionaryName = fieldDefinition.type === "string" || fieldDefinition.type === "list-string"
       ? fieldDefinition.dictionary
       : "";
     const values = dictionaryName ? getDictionaryOptions(dictionaryName) : [];
-    const selectorId = dictionaryName ? `dict-${dictionaryName}` : "";
+    const bufferedValue = state.predicateValueBuffers[predicate.uid] ?? "";
     const inputControl = dictionaryName
-      ? `
-        <select data-value-buffer="${predicate.uid}">
-          <option value="">${escapeHtml(placeholderText(state.locale, "selectValue"))}</option>
-          ${values.map(value => {
-            const label = typeof value.label === "string"
-              ? value.label
-              : localized(state.locale, value.label);
-            return `<option value="${escapeHtml(value.id)}">${escapeHtml(label)}</option>`;
-          }).join("")}
-        </select>
-      `
+      ? renderSearchableDropdown({
+        dropdownId: `predicate-values-${predicate.uid}`,
+        selectedValue: bufferedValue,
+        options: values,
+        placeholder: placeholderText(state.locale, "selectValue"),
+        mode: "buffer",
+        uid: predicate.uid
+      })
       : `
         <input
           type="${fieldDefinition.type === "int" || fieldDefinition.type === "map-int" ? "number" : "text"}"
           data-value-buffer="${predicate.uid}"
-          ${selectorId ? `list="${selectorId}"` : ""}
           placeholder="${escapeHtml(placeholderText(state.locale, "addValue"))}">
       `;
 
     return `
       <div class="field">
         ${renderFieldLabel(fieldText(state.locale, "values"), hintText(state.locale, "values"))}
-        <div class="inline-editor">
+        <div class="inline-editor inline-editor-wide">
           ${inputControl}
           <button
             type="button"
@@ -4236,19 +4723,16 @@ function mountApp(root) {
         </select>
       `;
     } else if (dictionary.length > 0) {
-      valueControl = `
-        <select ${commonAttrs}>
-          <option value="">${escapeHtml(placeholderText(state.locale, "selectValue"))}</option>
-          ${dictionary.map(value => {
-            const label = typeof value.label === "string"
-              ? value.label
-              : localized(state.locale, value.label);
-            return `
-            <option value="${escapeHtml(value.id)}"${value.id === predicate.value ? " selected" : ""}>${escapeHtml(label)}</option>
-          `;
-          }).join("")}
-        </select>
-      `;
+      valueControl = renderSearchableDropdown({
+        dropdownId: `predicate-value-${predicate.uid}`,
+        selectedValue: predicate.value,
+        options: dictionary,
+        placeholder: placeholderText(state.locale, "selectValue"),
+        mode: "scalar",
+        uid: predicate.uid,
+        ownerKind,
+        ownerUid
+      });
     } else {
       const type = fieldDefinition.type === "int" || fieldDefinition.type === "map-int" ? "number" : "text";
       const valueType = fieldDefinition.type === "int" ? `data-value-type="text"` : "";
@@ -4300,22 +4784,16 @@ function mountApp(root) {
     return `
       <label class="field">
         ${renderFieldLabel(label, hintText(state.locale, "key"))}
-        <select
-          data-entity="predicate"
-          data-owner-kind="${ownerKind}"
-          data-owner-uid="${ownerUid}"
-          data-uid="${predicate.uid}"
-          data-field="key">
-          <option value="">${escapeHtml(placeholderText(state.locale, "selectValue"))}</option>
-          ${dictionary.map(value => {
-            const optionLabel = typeof value.label === "string"
-              ? value.label
-              : localized(state.locale, value.label);
-            return `
-            <option value="${escapeHtml(value.id)}"${value.id === predicate.key ? " selected" : ""}>${escapeHtml(optionLabel)}</option>
-          `;
-          }).join("")}
-        </select>
+        ${renderSearchableDropdown({
+          dropdownId: `predicate-key-${predicate.uid}`,
+          selectedValue: predicate.key,
+          options: dictionary,
+          placeholder: placeholderText(state.locale, "selectValue"),
+          mode: "key",
+          uid: predicate.uid,
+          ownerKind,
+          ownerUid
+        })}
       </label>
     `;
   }
@@ -4478,7 +4956,7 @@ function mountApp(root) {
               placeholder="${escapeHtml(placeholderText(state.locale, "bindingParam"))}">
           </label>
             <label class="field">
-              ${renderFieldLabel(fieldText(state.locale, "source"), localized(state.locale, SOURCE_HELP_TEXT))}
+              ${renderFieldLabel(fieldText(state.locale, "source"), hintText(state.locale, "source"))}
               <select
                 data-entity="binding"
                 data-owner-kind="${ownerKind}"
@@ -4599,6 +5077,7 @@ function renderIntentionEditor(intention, entity, title, description, {
             value: intention.id,
             label: fieldText(locale, "templateId"),
             hint: hintText(locale, "templateId"),
+            help: hintText(locale, "templateIdTooltip"),
             placeholder: placeholderText(locale, "templateId")
           })}
           ${renderTextField({
@@ -4747,7 +5226,8 @@ function renderIntentionEditor(intention, entity, title, description, {
             value: intention.tagsInput ?? "",
             label: fieldText(locale, "tags"),
             hint: hintText(locale, "tags"),
-            help: ""
+            help: "",
+            placeholder: placeholderText(locale, "tags")
           })}
           ${renderColorField(entity, "color", intention.color, uid)}
         </div>
@@ -4965,7 +5445,6 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
               ${escapeHtml(buttonText(locale, "addCandidatePredicate"))}
             </button>
           </div>
-          <p class="muted-text">${escapeHtml(hintText(locale, "candidatePredicates"))}</p>
           ${slotDisabledByBind
             ? `<p class="muted-text">${escapeHtml(hintText(locale, "bindToSlot"))}</p>`
             : slot.candidatePredicates.length === 0
@@ -5017,7 +5496,7 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
                 value: state.draft.scenario.id,
                 label: fieldText(locale, "scenarioId"),
                 hint: hintText(locale, "scenarioId"),
-                help: "",
+                help: hintText(locale, "scenarioIdTooltip"),
                 placeholder: placeholderText(locale, "scenarioId")
               })}
               ${renderTextField({
@@ -5032,9 +5511,9 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
               <label class="field">
                 <span>${escapeHtml(fieldText(locale, "weight"))}</span>
                 <input
-                  type="number"
-                  min="1"
-                  step="1"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   value="${escapeHtml(state.draft.scenario.weight)}"
                   data-entity="scenario"
                   data-field="weight"
@@ -5059,7 +5538,6 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
               <strong>${escapeHtml(fieldText(locale, "globalPredicates"))} ${renderHelpIcon(hintText(locale, "globalPredicates"))}</strong>
               <button type="button" data-action="add-global-predicate">${escapeHtml(buttonText(locale, "addGlobalPredicate"))}</button>
             </div>
-            <p class="muted-text">${escapeHtml(hintText(locale, "globalPredicates"))}</p>
             ${state.draft.globalPredicates.length === 0
               ? `<p class="muted-text">${escapeHtml(t(locale, "ui.emptySection"))}</p>`
               : state.draft.globalPredicates.map((predicate, index) =>
@@ -5337,6 +5815,7 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
         ${renderModal()}
       </div>
     `;
+    applyPendingFocus();
   }
 
   root.addEventListener("click", handleClick);
@@ -5344,6 +5823,11 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
   root.addEventListener("change", handleInput);
   root.addEventListener("focusout", handleFocusOut);
   document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && state.searchableDropdown.openId) {
+      closeSearchableDropdown();
+      render();
+      return;
+    }
     if (event.key === "Escape" && state.modal) {
       state.modal = null;
       render();

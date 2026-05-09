@@ -1,5 +1,5 @@
 export const APP_TITLE = "IntentionEditor";
-export const APP_VERSION = "1.1.0";
+export const APP_VERSION = "1.6.0";
 
 export const STORAGE_KEY = "intention-editor.draft.v2";
 export const LOCALE_STORAGE_KEY = "intention-editor.locale.v1";

@@ -13,13 +13,13 @@ export { CATEGORY_CATALOG, VALUE_DICTIONARIES } from "./data/catalog-data.js";
 
 export const TEXT_BINDING_FIELDS = [
   { id: "characterName", label: { ru: "Имя персонажа", en: "Character name" } },
-  { id: "job", label: { ru: "Профессия", en: "Job" } },
+  { id: "job", label: { ru: "Должность", en: "Job" } },
   { id: "department", label: { ru: "Отдел", en: "Department" } },
   { id: "age", label: { ru: "Возраст", en: "Age" } },
   { id: "species", label: { ru: "Вид", en: "Species" } },
   { id: "sex", label: { ru: "Пол", en: "Sex" } },
   { id: "traits", label: { ru: "Черты", en: "Traits" } },
-  { id: "hasMindshield", label: { ru: "Есть mindshield", en: "Has mindshield" } },
+  { id: "hasMindshield", label: { ru: "Есть защита разума", en: "Has mindshield" } },
   { id: "antagRole", label: { ru: "Роли антагониста", en: "Antag roles" } },
   { id: "antagObjectiveType", label: { ru: "Типы целей антагониста", en: "Antag objective types" } },
   { id: "mindId", label: { ru: "MindId", en: "MindId" } },
@@ -91,7 +91,7 @@ export const FIELD_DEFINITIONS = {
     job: {
       type: "string",
       dictionary: "jobs",
-      label: { ru: "Профессия", en: "Job" }
+      label: { ru: "Должность", en: "Job" }
     },
     department: {
       type: "string",

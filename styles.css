@@ -497,6 +497,17 @@ code {
   gap: 8px;
 }
 
+.inline-editor-wide {
+  align-items: stretch;
+}
+
+.inline-editor-wide .searchable-dropdown,
+.inline-editor-wide input,
+.inline-editor-wide select {
+  flex: 1 1 auto;
+  min-width: 260px;
+}
+
 .inline-editor input,
 .inline-editor select {
   min-width: 0;
@@ -569,6 +580,29 @@ code {
   text-align: left;
 }
 
+.searchable-dropdown {
+  position: relative;
+}
+
+.searchable-trigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 35px;
+  background: var(--input-bg);
+  text-align: left;
+}
+
+.searchable-trigger .is-placeholder {
+  color: var(--muted);
+}
+
+.searchable-trigger .is-selected {
+  color: var(--text);
+}
+
 .category-trigger strong {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -591,6 +625,32 @@ code {
   padding: 6px;
 }
 
+.searchable-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 12;
+  display: grid;
+  width: 100%;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 6px;
+}
+
+.searchable-filter {
+  min-height: 35px;
+}
+
+.searchable-options {
+  display: grid;
+  gap: 4px;
+  max-height: 320px;
+  overflow: auto;
+}
+
 .category-option {
   display: grid;
   width: 100%;
@@ -610,8 +670,39 @@ code {
   overflow-wrap: anywhere;
 }
 
+.searchable-option {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+  border-color: transparent;
+  background: transparent;
+  text-align: left;
+  white-space: normal;
+}
+
+.searchable-option strong {
+  font-weight: 700;
+}
+
+.searchable-option span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.searchable-option-clear {
+  border-color: var(--line-soft);
+  background: var(--panel-2);
+}
+
+.searchable-empty {
+  padding: 8px 10px;
+  color: var(--muted);
+}
+
 .category-option:hover:not(:disabled),
-.category-option.is-active {
+.category-option.is-active,
+.searchable-option:hover:not(:disabled),
+.searchable-option.is-active {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--panel));
   color: var(--text);
@@ -624,14 +715,14 @@ code {
   top: calc(100% + 8px);
   left: 0;
   z-index: 10;
-  width: min(320px, calc(100vw - 24px));
+  width: min(260px, calc(100vw - 24px));
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--text);
   box-shadow: var(--shadow);
-  white-space: normal;
+  white-space: pre-line;
   overflow-wrap: anywhere;
 }
 

@@ -44,7 +44,24 @@ run("candidate dictionary labels expose translated values", () => {
   });
 
   const objective = getDictionaryLabel("objectiveTypes", "KillRandomPersonObjective");
-  assert.equal(objective, "Kill Random Person Objective");
+  assert.deepEqual(objective, {
+    ru: "KillRandomPersonObjective · Устранить случайного персонажа",
+    en: "Kill random person objective"
+  });
+});
+
+run("round dictionaries expose localized labels", () => {
+  const gameMode = getDictionaryLabel("gameModes", "Nukeops");
+  assert.deepEqual(gameMode, {
+    ru: "Nukeops · Ядерные оперативники",
+    en: "Nuclear Operatives"
+  });
+
+  const eventTag = getDictionaryLabel("eventTags", "Halloween");
+  assert.deepEqual(eventTag, {
+    ru: "Halloween · Хэллоуин",
+    en: "Halloween"
+  });
 });
 
 run("bindToSlot and allowSameActorAs conflict", () => {

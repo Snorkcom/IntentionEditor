@@ -19,8 +19,8 @@ function localizedSeed(locale) {
   return {
     scenarioName: "Новый сценарий",
     ownerName: "Основное намерение",
-    ownerDescription: "Кратко опишите, какую сцену или инициативу запускает владелец сценария.",
-    oocInfo: "Это ролевой ориентир, а не обязательная цель."
+    ownerDescription: "Опишите сцену, ситуацию или инициативу, вокруг которой строится сценарий.",
+    oocInfo: "Это ролевой ориентир для отыгрыша, а не обязательная задача. Другие игроки не обязаны вам подыгрывать. Соблюдайте правила сервера."
   };
 }
 
@@ -64,11 +64,11 @@ export function createOwnerIntention(locale = "ru") {
     defaultVisibility: VISIBILITY_TYPES.visible,
     hiddenLabel: "",
     tags: ["starter"],
-    tagsInput: "starter",
+    tagsInput: "",
     iconEnabled: false,
     iconSprite: "",
     iconState: "",
-    color: "#6DA9E4FF",
+    color: "",
     author: "",
     creationDate: todayIsoDate()
   });
@@ -78,7 +78,7 @@ export function createSecondaryIntention(locale = "ru") {
   const seed = localizedSeed(locale);
   return ensureTagsBuffer({
     uid: nextUid("intention"),
-    id: "",
+    id: "IntentionNewSecondary",
     kind: INTENTION_KINDS.secondary,
     name: "",
     summary: "",
@@ -92,7 +92,7 @@ export function createSecondaryIntention(locale = "ru") {
     iconEnabled: false,
     iconSprite: "",
     iconState: "",
-    color: "#A2C9A8FF",
+    color: "",
     author: "",
     creationDate: todayIsoDate()
   });

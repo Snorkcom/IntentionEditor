@@ -58,11 +58,6 @@ const SOURCE_LABELS = {
   literal: { ru: "literal", en: "literal" }
 };
 
-const SOURCE_HELP_TEXT = {
-  ru: "Откуда брать значение для параметра: self — из текущего участника, slot — из другого slot, round — из данных раунда, literal — вручную заданный текст.",
-  en: "Where the parameter value comes from: self — current participant, slot — another slot, round — round data, literal — manually entered text."
-};
-
 const BOOLEAN_OPTIONS = [
   { id: "true", label: { ru: "true · да", en: "true" } },
   { id: "false", label: { ru: "false · нет", en: "false" } }
@@ -232,6 +227,12 @@ export function mountApp(root) {
     actionStatus: null,
     intentionClipboard: null,
     categoryDropdownOpen: false,
+    searchableDropdown: {
+      openId: "",
+      filter: ""
+    },
+    predicateValueBuffers: {},
+    pendingFocus: null,
     modal: null
   };
 
@@ -261,6 +262,7 @@ export function mountApp(root) {
       ownerKind: active.dataset.ownerKind ?? "",
       ownerUid: active.dataset.ownerUid ?? "",
       valueBuffer: active.dataset.valueBuffer ?? "",
+      searchableFilterId: active.dataset.searchableFilterId ?? "",
       selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
       selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null
     };
@@ -274,6 +276,8 @@ export function mountApp(root) {
     let selector = "";
     if (snapshot.valueBuffer) {
       selector = `[data-value-buffer="${snapshot.valueBuffer}"]`;
+    } else if (snapshot.searchableFilterId) {
+      selector = `[data-searchable-filter-id="${snapshot.searchableFilterId}"]`;
     } else if (snapshot.entity && snapshot.field) {
       selector = [
         `[data-entity="${snapshot.entity}"]`,
@@ -288,25 +292,12 @@ export function mountApp(root) {
       return;
     }
 
-    const next = root.querySelector(selector);
-    if (!(next instanceof HTMLInputElement || next instanceof HTMLTextAreaElement || next instanceof HTMLSelectElement)) {
-      return;
-    }
-
-    next.focus({ preventScroll: true });
-    if ((next instanceof HTMLInputElement || next instanceof HTMLTextAreaElement)
-      && snapshot.selectionStart !== null
-      && snapshot.selectionEnd !== null) {
-      try {
-        next.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
-      } catch {
-        // noop
-      }
-    }
+    queueFocus(selector, snapshot.selectionStart, snapshot.selectionEnd);
   }
 
   function recalculate({ save = true, actionStatus = null, normalizeTagBuffers = false } = {}) {
     const focusSnapshot = captureFocusSnapshot();
+    restoreFocusSnapshot(focusSnapshot);
     state.draft.ownerSlot.intentionId = state.draft.ownerIntention.id;
     synchronizeLinkedIntentions();
     state.draft.lastUpdatedAt = new Date().toISOString();
@@ -318,7 +309,34 @@ export function mountApp(root) {
     }
     state.actionStatus = actionStatus;
     render();
-    restoreFocusSnapshot(focusSnapshot);
+  }
+
+  function queueFocus(selector, selectionStart = null, selectionEnd = null) {
+    state.pendingFocus = { selector, selectionStart, selectionEnd };
+  }
+
+  function applyPendingFocus() {
+    if (!state.pendingFocus) {
+      return;
+    }
+
+    const pending = state.pendingFocus;
+    state.pendingFocus = null;
+    requestAnimationFrame(() => {
+      const next = root.querySelector(pending.selector);
+      if (!(next instanceof HTMLInputElement || next instanceof HTMLTextAreaElement || next instanceof HTMLSelectElement)) {
+        return;
+      }
+
+      next.focus({ preventScroll: true });
+      if (pending.selectionStart !== null && pending.selectionEnd !== null) {
+        try {
+          next.setSelectionRange(pending.selectionStart, pending.selectionEnd);
+        } catch {
+          // noop
+        }
+      }
+    });
   }
 
   function setLocale(nextLocale) {
@@ -412,6 +430,43 @@ export function mountApp(root) {
         id: intention.id,
         label: `${intention.id} · ${intention.name || t(state.locale, "ui.choose")}`
       }));
+  }
+
+  function getSearchableOptionLabel(option) {
+    return typeof option.label === "string"
+      ? option.label
+      : localized(state.locale, option.label);
+  }
+
+  function filterSearchableOptions(options, filter) {
+    const normalizedFilter = filter.trim().toLocaleLowerCase();
+    if (!normalizedFilter) {
+      return options;
+    }
+
+    return options.filter(option => {
+      const label = getSearchableOptionLabel(option).toLocaleLowerCase();
+      const id = option.id.toLocaleLowerCase();
+      return label.includes(normalizedFilter) || id.includes(normalizedFilter);
+    });
+  }
+
+  function closeSearchableDropdown() {
+    state.searchableDropdown.openId = "";
+    state.searchableDropdown.filter = "";
+  }
+
+  function setSearchableDropdownOpen(dropdownId, open) {
+    if (open) {
+      state.searchableDropdown.openId = dropdownId;
+      state.searchableDropdown.filter = "";
+      queueFocus(`[data-searchable-filter-id="${dropdownId}"]`);
+      render();
+      return;
+    }
+
+    closeSearchableDropdown();
+    render();
   }
 
   function normalizePredicate(predicate, ownerKind, ownerUid) {
@@ -685,6 +740,10 @@ export function mountApp(root) {
         state.categoryDropdownOpen = false;
         render();
       }
+      if (state.searchableDropdown.openId && !target.closest("[data-searchable-dropdown]")) {
+        closeSearchableDropdown();
+        render();
+      }
       return;
     }
 
@@ -696,6 +755,17 @@ export function mountApp(root) {
       !button.closest("[data-category-picker]")
     ) {
       state.categoryDropdownOpen = false;
+    }
+    if (
+      state.searchableDropdown.openId &&
+      ![
+        "toggle-searchable-dropdown",
+        "select-searchable-value",
+        "clear-searchable-value"
+      ].includes(action) &&
+      !button.closest("[data-searchable-dropdown]")
+    ) {
+      closeSearchableDropdown();
     }
 
     switch (action) {
@@ -716,6 +786,52 @@ export function mountApp(root) {
         withMutation(() => {
           state.draft.scenario.category = button.dataset.categoryId;
           state.categoryDropdownOpen = false;
+        });
+        return;
+      case "toggle-searchable-dropdown":
+        setSearchableDropdownOpen(
+          button.dataset.dropdownId,
+          state.searchableDropdown.openId !== button.dataset.dropdownId
+        );
+        return;
+      case "select-searchable-value":
+        if (button.dataset.mode === "buffer") {
+          state.predicateValueBuffers[button.dataset.uid] = button.dataset.value ?? "";
+          closeSearchableDropdown();
+          render();
+          return;
+        }
+        withMutation(() => {
+          const predicate = findPredicate(button.dataset.ownerKind, button.dataset.ownerUid, button.dataset.uid);
+          if (!predicate) {
+            return;
+          }
+          if (button.dataset.mode === "key") {
+            predicate.key = button.dataset.value ?? "";
+          } else {
+            predicate.value = button.dataset.value ?? "";
+          }
+          closeSearchableDropdown();
+        });
+        return;
+      case "clear-searchable-value":
+        if (button.dataset.mode === "buffer") {
+          state.predicateValueBuffers[button.dataset.uid] = "";
+          closeSearchableDropdown();
+          render();
+          return;
+        }
+        withMutation(() => {
+          const predicate = findPredicate(button.dataset.ownerKind, button.dataset.ownerUid, button.dataset.uid);
+          if (!predicate) {
+            return;
+          }
+          if (button.dataset.mode === "key") {
+            predicate.key = "";
+          } else {
+            predicate.value = "";
+          }
+          closeSearchableDropdown();
         });
         return;
       case "open-modal":
@@ -888,11 +1004,12 @@ export function mountApp(root) {
             return;
           }
           const input = root.querySelector(`[data-value-buffer="${button.dataset.uid}"]`);
-          const value = nonEmpty(input?.value);
+          const value = nonEmpty(state.predicateValueBuffers[button.dataset.uid] ?? input?.value);
           if (!value) {
             return;
           }
           predicate.values = [...predicate.values, value];
+          state.predicateValueBuffers[button.dataset.uid] = "";
           if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
             input.value = "";
           }
@@ -920,6 +1037,17 @@ export function mountApp(root) {
   function handleInput(event) {
     const target = event.target;
     if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
+      return;
+    }
+
+    if (target.dataset.searchableFilterId) {
+      state.searchableDropdown.filter = target.value;
+      queueFocus(
+        `[data-searchable-filter-id="${target.dataset.searchableFilterId}"]`,
+        target.selectionStart ?? null,
+        target.selectionEnd ?? null
+      );
+      render();
       return;
     }
 
@@ -1130,36 +1258,104 @@ export function mountApp(root) {
     `;
   }
 
+  function renderSearchableDropdown({
+    dropdownId,
+    selectedValue,
+    options,
+    placeholder,
+    mode,
+    uid,
+    ownerKind = "",
+    ownerUid = ""
+  }) {
+    const isOpen = state.searchableDropdown.openId === dropdownId;
+    const filteredOptions = filterSearchableOptions(options, isOpen ? state.searchableDropdown.filter : "");
+    const selectedOption = options.find(option => option.id === selectedValue) ?? null;
+    const selectedLabel = selectedOption ? getSearchableOptionLabel(selectedOption) : placeholder;
+
+    return `
+      <div class="searchable-dropdown" data-searchable-dropdown="true">
+        <button
+          type="button"
+          class="searchable-trigger"
+          data-action="toggle-searchable-dropdown"
+          data-dropdown-id="${escapeHtml(dropdownId)}"
+          aria-haspopup="listbox"
+          aria-expanded="${isOpen ? "true" : "false"}">
+          <span class="${selectedOption ? "is-selected" : "is-placeholder"}">${escapeHtml(selectedLabel)}</span>
+          <span aria-hidden="true">v</span>
+        </button>
+        ${isOpen ? `
+          <div class="searchable-menu" role="listbox">
+            <input
+              type="text"
+              class="searchable-filter"
+              value="${escapeHtml(state.searchableDropdown.filter)}"
+              data-searchable-filter-id="${escapeHtml(dropdownId)}"
+              placeholder="${escapeHtml(placeholderText(state.locale, "searchValue"))}"
+              aria-label="${escapeHtml(t(state.locale, "ui.searchValueAria"))}">
+            <button
+              type="button"
+              class="searchable-option searchable-option-clear"
+              data-action="clear-searchable-value"
+              data-dropdown-id="${escapeHtml(dropdownId)}"
+              data-mode="${escapeHtml(mode)}"
+              data-uid="${escapeHtml(uid)}"
+              ${ownerKind ? `data-owner-kind="${escapeHtml(ownerKind)}"` : ""}
+              ${ownerUid ? `data-owner-uid="${escapeHtml(ownerUid)}"` : ""}>
+              ${escapeHtml(selectText(state.locale, "clearValue"))}
+            </button>
+            <div class="searchable-options">
+              ${filteredOptions.length > 0 ? filteredOptions.map(option => `
+                <button
+                  type="button"
+                  class="searchable-option ${option.id === selectedValue ? "is-active" : ""}"
+                  data-action="select-searchable-value"
+                  data-dropdown-id="${escapeHtml(dropdownId)}"
+                  data-mode="${escapeHtml(mode)}"
+                  data-uid="${escapeHtml(uid)}"
+                  data-value="${escapeHtml(option.id)}"
+                  ${ownerKind ? `data-owner-kind="${escapeHtml(ownerKind)}"` : ""}
+                  ${ownerUid ? `data-owner-uid="${escapeHtml(ownerUid)}"` : ""}
+                  role="option"
+                  aria-selected="${option.id === selectedValue ? "true" : "false"}">
+                  <strong>${escapeHtml(option.id)}</strong>
+                  <span>${escapeHtml(getSearchableOptionLabel(option))}</span>
+                </button>
+              `).join("") : `<div class="searchable-empty">${escapeHtml(selectText(state.locale, "noMatches"))}</div>`}
+            </div>
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }
+
   function renderPredicateValueList(predicate, ownerKind, ownerUid, fieldDefinition) {
     const dictionaryName = fieldDefinition.type === "string" || fieldDefinition.type === "list-string"
       ? fieldDefinition.dictionary
       : "";
     const values = dictionaryName ? getDictionaryOptions(dictionaryName) : [];
-    const selectorId = dictionaryName ? `dict-${dictionaryName}` : "";
+    const bufferedValue = state.predicateValueBuffers[predicate.uid] ?? "";
     const inputControl = dictionaryName
-      ? `
-        <select data-value-buffer="${predicate.uid}">
-          <option value="">${escapeHtml(placeholderText(state.locale, "selectValue"))}</option>
-          ${values.map(value => {
-            const label = typeof value.label === "string"
-              ? value.label
-              : localized(state.locale, value.label);
-            return `<option value="${escapeHtml(value.id)}">${escapeHtml(label)}</option>`;
-          }).join("")}
-        </select>
-      `
+      ? renderSearchableDropdown({
+        dropdownId: `predicate-values-${predicate.uid}`,
+        selectedValue: bufferedValue,
+        options: values,
+        placeholder: placeholderText(state.locale, "selectValue"),
+        mode: "buffer",
+        uid: predicate.uid
+      })
       : `
         <input
           type="${fieldDefinition.type === "int" || fieldDefinition.type === "map-int" ? "number" : "text"}"
           data-value-buffer="${predicate.uid}"
-          ${selectorId ? `list="${selectorId}"` : ""}
           placeholder="${escapeHtml(placeholderText(state.locale, "addValue"))}">
       `;
 
     return `
       <div class="field">
         ${renderFieldLabel(fieldText(state.locale, "values"), hintText(state.locale, "values"))}
-        <div class="inline-editor">
+        <div class="inline-editor inline-editor-wide">
           ${inputControl}
           <button
             type="button"
@@ -1213,19 +1409,16 @@ export function mountApp(root) {
         </select>
       `;
     } else if (dictionary.length > 0) {
-      valueControl = `
-        <select ${commonAttrs}>
-          <option value="">${escapeHtml(placeholderText(state.locale, "selectValue"))}</option>
-          ${dictionary.map(value => {
-            const label = typeof value.label === "string"
-              ? value.label
-              : localized(state.locale, value.label);
-            return `
-            <option value="${escapeHtml(value.id)}"${value.id === predicate.value ? " selected" : ""}>${escapeHtml(label)}</option>
-          `;
-          }).join("")}
-        </select>
-      `;
+      valueControl = renderSearchableDropdown({
+        dropdownId: `predicate-value-${predicate.uid}`,
+        selectedValue: predicate.value,
+        options: dictionary,
+        placeholder: placeholderText(state.locale, "selectValue"),
+        mode: "scalar",
+        uid: predicate.uid,
+        ownerKind,
+        ownerUid
+      });
     } else {
       const type = fieldDefinition.type === "int" || fieldDefinition.type === "map-int" ? "number" : "text";
       const valueType = fieldDefinition.type === "int" ? `data-value-type="text"` : "";
@@ -1277,22 +1470,16 @@ export function mountApp(root) {
     return `
       <label class="field">
         ${renderFieldLabel(label, hintText(state.locale, "key"))}
-        <select
-          data-entity="predicate"
-          data-owner-kind="${ownerKind}"
-          data-owner-uid="${ownerUid}"
-          data-uid="${predicate.uid}"
-          data-field="key">
-          <option value="">${escapeHtml(placeholderText(state.locale, "selectValue"))}</option>
-          ${dictionary.map(value => {
-            const optionLabel = typeof value.label === "string"
-              ? value.label
-              : localized(state.locale, value.label);
-            return `
-            <option value="${escapeHtml(value.id)}"${value.id === predicate.key ? " selected" : ""}>${escapeHtml(optionLabel)}</option>
-          `;
-          }).join("")}
-        </select>
+        ${renderSearchableDropdown({
+          dropdownId: `predicate-key-${predicate.uid}`,
+          selectedValue: predicate.key,
+          options: dictionary,
+          placeholder: placeholderText(state.locale, "selectValue"),
+          mode: "key",
+          uid: predicate.uid,
+          ownerKind,
+          ownerUid
+        })}
       </label>
     `;
   }
@@ -1455,7 +1642,7 @@ export function mountApp(root) {
               placeholder="${escapeHtml(placeholderText(state.locale, "bindingParam"))}">
           </label>
             <label class="field">
-              ${renderFieldLabel(fieldText(state.locale, "source"), localized(state.locale, SOURCE_HELP_TEXT))}
+              ${renderFieldLabel(fieldText(state.locale, "source"), hintText(state.locale, "source"))}
               <select
                 data-entity="binding"
                 data-owner-kind="${ownerKind}"
@@ -1576,6 +1763,7 @@ function renderIntentionEditor(intention, entity, title, description, {
             value: intention.id,
             label: fieldText(locale, "templateId"),
             hint: hintText(locale, "templateId"),
+            help: hintText(locale, "templateIdTooltip"),
             placeholder: placeholderText(locale, "templateId")
           })}
           ${renderTextField({
@@ -1724,7 +1912,8 @@ function renderIntentionEditor(intention, entity, title, description, {
             value: intention.tagsInput ?? "",
             label: fieldText(locale, "tags"),
             hint: hintText(locale, "tags"),
-            help: ""
+            help: "",
+            placeholder: placeholderText(locale, "tags")
           })}
           ${renderColorField(entity, "color", intention.color, uid)}
         </div>
@@ -1942,7 +2131,6 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
               ${escapeHtml(buttonText(locale, "addCandidatePredicate"))}
             </button>
           </div>
-          <p class="muted-text">${escapeHtml(hintText(locale, "candidatePredicates"))}</p>
           ${slotDisabledByBind
             ? `<p class="muted-text">${escapeHtml(hintText(locale, "bindToSlot"))}</p>`
             : slot.candidatePredicates.length === 0
@@ -1994,7 +2182,7 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
                 value: state.draft.scenario.id,
                 label: fieldText(locale, "scenarioId"),
                 hint: hintText(locale, "scenarioId"),
-                help: "",
+                help: hintText(locale, "scenarioIdTooltip"),
                 placeholder: placeholderText(locale, "scenarioId")
               })}
               ${renderTextField({
@@ -2009,9 +2197,9 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
               <label class="field">
                 <span>${escapeHtml(fieldText(locale, "weight"))}</span>
                 <input
-                  type="number"
-                  min="1"
-                  step="1"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   value="${escapeHtml(state.draft.scenario.weight)}"
                   data-entity="scenario"
                   data-field="weight"
@@ -2036,7 +2224,6 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
               <strong>${escapeHtml(fieldText(locale, "globalPredicates"))} ${renderHelpIcon(hintText(locale, "globalPredicates"))}</strong>
               <button type="button" data-action="add-global-predicate">${escapeHtml(buttonText(locale, "addGlobalPredicate"))}</button>
             </div>
-            <p class="muted-text">${escapeHtml(hintText(locale, "globalPredicates"))}</p>
             ${state.draft.globalPredicates.length === 0
               ? `<p class="muted-text">${escapeHtml(t(locale, "ui.emptySection"))}</p>`
               : state.draft.globalPredicates.map((predicate, index) =>
@@ -2314,6 +2501,7 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
         ${renderModal()}
       </div>
     `;
+    applyPendingFocus();
   }
 
   root.addEventListener("click", handleClick);
@@ -2321,6 +2509,11 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
   root.addEventListener("change", handleInput);
   root.addEventListener("focusout", handleFocusOut);
   document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && state.searchableDropdown.openId) {
+      closeSearchableDropdown();
+      render();
+      return;
+    }
     if (event.key === "Escape" && state.modal) {
       state.modal = null;
       render();

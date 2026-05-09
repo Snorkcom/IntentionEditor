@@ -3391,6 +3391,9 @@ const INTENTION_CONTENT_FIELDS = [
   "hiddenLabel"
 ];
 
+const HISTORY_MAX_DEPTH = 100;
+const HISTORY_TEXT_COALESCE_MS = 1200;
+
 function localized(locale, value) {
   return getLocalizedText(locale, value);
 }
@@ -3547,7 +3550,16 @@ function mountApp(root) {
     },
     predicateValueBuffers: {},
     pendingFocus: null,
-    modal: null
+    modal: null,
+    textareaHeights: {},
+    textareaScrollTops: {},
+    history: {
+      undoStack: [],
+      redoStack: [],
+      maxDepth: HISTORY_MAX_DEPTH,
+      lastMutationKey: "",
+      lastMutationAt: 0
+    }
   };
 
   function synchronizeDraftTags({ normalizeBuffers = false } = {}) {
@@ -3560,6 +3572,42 @@ function mountApp(root) {
     }
   }
 
+  function getControlKeyFromParts({
+    entity = "",
+    field = "",
+    uid = "",
+    ownerKind = "",
+    ownerUid = ""
+  }) {
+    return [entity, field, uid, ownerKind, ownerUid].join("|");
+  }
+
+  function getControlKey(control) {
+    return control.dataset.controlKey
+      || getControlKeyFromParts({
+        entity: control.dataset.entity ?? "",
+        field: control.dataset.field ?? "",
+        uid: control.dataset.uid ?? "",
+        ownerKind: control.dataset.ownerKind ?? "",
+        ownerUid: control.dataset.ownerUid ?? ""
+      });
+  }
+
+  function rememberTextareaState(control) {
+    if (!(control instanceof HTMLTextAreaElement)) {
+      return;
+    }
+    if (!control.dataset.entity || !control.dataset.field) {
+      return;
+    }
+
+    const key = getControlKey(control);
+    if (key) {
+      state.textareaHeights[key] = control.offsetHeight;
+      state.textareaScrollTops[key] = control.scrollTop;
+    }
+  }
+
   function captureFocusSnapshot() {
     const active = document.activeElement;
     if (!active || !(active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || active instanceof HTMLSelectElement)) {
@@ -3568,6 +3616,8 @@ function mountApp(root) {
     if (!root.contains(active)) {
       return null;
     }
+    rememberTextareaState(active);
+    const controlKey = getControlKey(active);
 
     return {
       entity: active.dataset.entity ?? "",
@@ -3578,8 +3628,81 @@ function mountApp(root) {
       valueBuffer: active.dataset.valueBuffer ?? "",
       searchableFilterId: active.dataset.searchableFilterId ?? "",
       selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
-      selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null
+      selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null,
+      scrollTop: active instanceof HTMLTextAreaElement ? active.scrollTop : null,
+      controlKey
     };
+  }
+
+  function pushHistorySnapshot({
+    key = "",
+    coalesceMs = 0,
+    force = false
+  } = {}) {
+    const now = Date.now();
+    const canCoalesce = !force
+      && key
+      && coalesceMs > 0
+      && state.history.lastMutationKey === key
+      && now - state.history.lastMutationAt <= coalesceMs;
+
+    if (canCoalesce) {
+      state.history.lastMutationAt = now;
+      return;
+    }
+
+    state.history.undoStack.push(deepClone(state.draft));
+    if (state.history.undoStack.length > state.history.maxDepth) {
+      state.history.undoStack.shift();
+    }
+    state.history.redoStack = [];
+    state.history.lastMutationKey = key;
+    state.history.lastMutationAt = now;
+  }
+
+  function resetHistoryCoalescing() {
+    state.history.lastMutationKey = "";
+    state.history.lastMutationAt = 0;
+  }
+
+  function clearTransientEditingState() {
+    closeSearchableDropdown();
+    state.categoryDropdownOpen = false;
+    state.modal = null;
+    state.predicateValueBuffers = {};
+  }
+
+  function restoreDraftFromHistory(snapshot) {
+    const focusSnapshot = captureFocusSnapshot();
+    state.draft = normalizeDraft(deepClone(snapshot), state.locale);
+    clearTransientEditingState();
+    restoreFocusSnapshot(focusSnapshot);
+    recalculate({ save: true, preserveFocus: false });
+  }
+
+  function undoHistory() {
+    const snapshot = state.history.undoStack.pop();
+    if (!snapshot) {
+      return;
+    }
+
+    state.history.redoStack.push(deepClone(state.draft));
+    resetHistoryCoalescing();
+    restoreDraftFromHistory(snapshot);
+  }
+
+  function redoHistory() {
+    const snapshot = state.history.redoStack.pop();
+    if (!snapshot) {
+      return;
+    }
+
+    state.history.undoStack.push(deepClone(state.draft));
+    if (state.history.undoStack.length > state.history.maxDepth) {
+      state.history.undoStack.shift();
+    }
+    resetHistoryCoalescing();
+    restoreDraftFromHistory(snapshot);
   }
 
   function restoreFocusSnapshot(snapshot) {
@@ -3606,11 +3729,16 @@ function mountApp(root) {
       return;
     }
 
-    queueFocus(selector, snapshot.selectionStart, snapshot.selectionEnd);
+    queueFocus(selector, snapshot.selectionStart, snapshot.selectionEnd, snapshot.scrollTop);
   }
 
-  function recalculate({ save = true, actionStatus = null, normalizeTagBuffers = false } = {}) {
-    const focusSnapshot = captureFocusSnapshot();
+  function recalculate({
+    save = true,
+    actionStatus = null,
+    normalizeTagBuffers = false,
+    preserveFocus = true
+  } = {}) {
+    const focusSnapshot = preserveFocus ? captureFocusSnapshot() : null;
     restoreFocusSnapshot(focusSnapshot);
     state.draft.ownerSlot.intentionId = state.draft.ownerIntention.id;
     synchronizeLinkedIntentions();
@@ -3625,8 +3753,8 @@ function mountApp(root) {
     render();
   }
 
-  function queueFocus(selector, selectionStart = null, selectionEnd = null) {
-    state.pendingFocus = { selector, selectionStart, selectionEnd };
+  function queueFocus(selector, selectionStart = null, selectionEnd = null, scrollTop = null) {
+    state.pendingFocus = { selector, selectionStart, selectionEnd, scrollTop };
   }
 
   function applyPendingFocus() {
@@ -3643,6 +3771,9 @@ function mountApp(root) {
       }
 
       next.focus({ preventScroll: true });
+      if (next instanceof HTMLTextAreaElement && pending.scrollTop !== null) {
+        next.scrollTop = pending.scrollTop;
+      }
       if (pending.selectionStart !== null && pending.selectionEnd !== null) {
         try {
           next.setSelectionRange(pending.selectionStart, pending.selectionEnd);
@@ -3666,14 +3797,33 @@ function mountApp(root) {
   }
 
   function resetDraft() {
+    pushHistorySnapshot({ key: "reset-draft", force: true });
     clearDraft();
     state.draft = createEmptyDraft(state.locale);
+    resetHistoryCoalescing();
     recalculate({ save: true });
   }
 
   function withMutation(callback, options = {}) {
+    const {
+      history = true,
+      historyKey = "",
+      historyCoalesceMs = 0,
+      historyForce = false,
+      ...recalculateOptions
+    } = options;
+    if (history) {
+      pushHistorySnapshot({
+        key: historyKey,
+        coalesceMs: historyCoalesceMs,
+        force: historyForce
+      });
+    }
     callback();
-    recalculate(options);
+    if (!historyKey || historyForce) {
+      resetHistoryCoalescing();
+    }
+    recalculate(recalculateOptions);
   }
 
   function findSecondaryIntention(uid) {
@@ -3861,7 +4011,21 @@ function mountApp(root) {
     }
   }
 
-  function setField(target) {
+  function getInputHistoryOptions(target) {
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+      return {};
+    }
+    if (!target.dataset.entity || !target.dataset.field) {
+      return {};
+    }
+
+    return {
+      historyKey: `input:${getControlKey(target)}`,
+      historyCoalesceMs: HISTORY_TEXT_COALESCE_MS
+    };
+  }
+
+  function setField(target, options = {}) {
     const entity = target.dataset.entity;
     const field = target.dataset.field;
     const uid = target.dataset.uid;
@@ -3949,7 +4113,7 @@ function mountApp(root) {
       if ((entity === "slot" || entity === "owner-slot") && field === "visibilityType" && model.visibilityType === VISIBILITY_TYPES.visible) {
         model.revealType = REVEAL_TYPES.none;
       }
-    });
+    }, options);
   }
 
   async function downloadArtifact(kind) {
@@ -4366,7 +4530,11 @@ function mountApp(root) {
     }
 
     if (target.dataset.entity && target.dataset.field) {
-      setField(target);
+      rememberTextareaState(target);
+      const duplicateTextChange = event.type === "change"
+        && !(target instanceof HTMLSelectElement)
+        && target.type !== "checkbox";
+      setField(target, duplicateTextChange ? { history: false } : getInputHistoryOptions(target));
     }
   }
 
@@ -4375,6 +4543,7 @@ function mountApp(root) {
     if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
       return;
     }
+    rememberTextareaState(target);
     if (target.dataset.field !== "tagsInput") {
       return;
     }
@@ -4393,7 +4562,7 @@ function mountApp(root) {
 
     withMutation(() => {
       normalizeTagsOnBlur(intention);
-    }, { normalizeTagBuffers: false });
+    }, { history: false, normalizeTagBuffers: false });
   }
 
   function renderTopBar() {
@@ -4526,9 +4695,12 @@ function mountApp(root) {
     help = ""
   }) {
     const counter = counterMax > 0 ? renderCounter(`${value ?? ""}`.length, counterMax) : "";
+    const controlKey = getControlKeyFromParts({ entity, field, uid, ownerKind, ownerUid });
+    const textareaHeight = rows > 0 ? state.textareaHeights[controlKey] : null;
     const commonAttrs = `
       data-entity="${entity}"
       data-field="${field}"
+      data-control-key="${escapeHtml(controlKey)}"
       ${uid ? `data-uid="${uid}"` : ""}
       ${ownerKind ? `data-owner-kind="${ownerKind}"` : ""}
       ${ownerUid ? `data-owner-uid="${ownerUid}"` : ""}
@@ -4537,10 +4709,11 @@ function mountApp(root) {
       ${placeholder ? `placeholder="${escapeHtml(placeholder)}"` : ""}
       ${disabled ? "disabled" : ""}
       ${dataListId ? `list="${dataListId}"` : ""}
+      ${type === "text" && valueType === "number" ? `inputmode="numeric" pattern="[0-9]*"` : ""}
     `;
 
     const control = rows > 0
-      ? `<textarea rows="${rows}" ${commonAttrs}>${escapeHtml(value)}</textarea>`
+      ? `<textarea rows="${rows}" ${textareaHeight ? `style="height:${textareaHeight}px"` : ""} ${commonAttrs}>${escapeHtml(value)}</textarea>`
       : `<input type="${type}" value="${escapeHtml(value)}" ${commonAttrs}>`;
 
     return `
@@ -4661,7 +4834,8 @@ function mountApp(root) {
       })
       : `
         <input
-          type="${fieldDefinition.type === "int" || fieldDefinition.type === "map-int" ? "number" : "text"}"
+          type="text"
+          ${fieldDefinition.type === "int" || fieldDefinition.type === "map-int" ? `inputmode="numeric" pattern="[0-9]*"` : ""}
           data-value-buffer="${predicate.uid}"
           placeholder="${escapeHtml(placeholderText(state.locale, "addValue"))}">
       `;
@@ -4734,9 +4908,10 @@ function mountApp(root) {
         ownerUid
       });
     } else {
-      const type = fieldDefinition.type === "int" || fieldDefinition.type === "map-int" ? "number" : "text";
-      const valueType = fieldDefinition.type === "int" ? `data-value-type="text"` : "";
-      valueControl = `<input type="${type}" value="${escapeHtml(predicate.value)}" ${commonAttrs} ${valueType}>`;
+      const numericAttrs = fieldDefinition.type === "int" || fieldDefinition.type === "map-int"
+        ? `inputmode="numeric" pattern="[0-9]*"`
+        : "";
+      valueControl = `<input type="text" value="${escapeHtml(predicate.value)}" ${commonAttrs} ${numericAttrs}>`;
     }
 
     return `
@@ -4748,30 +4923,32 @@ function mountApp(root) {
   }
 
   function renderRangeEditor(predicate, ownerKind, ownerUid, fieldDefinition) {
-    const type = fieldDefinition.type === "int" ? "number" : "text";
+    const numericAttrs = fieldDefinition.type === "int" ? `inputmode="numeric" pattern="[0-9]*"` : "";
     return `
       <div class="field-grid two">
         <label class="field">
           ${renderFieldLabel(fieldText(state.locale, "valueFrom"), hintText(state.locale, "valueFrom"))}
           <input
-            type="${type}"
+            type="text"
             value="${escapeHtml(predicate.valueFrom)}"
             data-entity="predicate"
             data-owner-kind="${ownerKind}"
             data-owner-uid="${ownerUid}"
             data-uid="${predicate.uid}"
-            data-field="valueFrom">
+            data-field="valueFrom"
+            ${numericAttrs}>
         </label>
         <label class="field">
           ${renderFieldLabel(fieldText(state.locale, "valueTo"), hintText(state.locale, "valueTo"))}
           <input
-            type="${type}"
+            type="text"
             value="${escapeHtml(predicate.valueTo)}"
             data-entity="predicate"
             data-owner-kind="${ownerKind}"
             data-owner-uid="${ownerUid}"
             data-uid="${predicate.uid}"
-            data-field="valueTo">
+            data-field="valueTo"
+            ${numericAttrs}>
         </label>
       </div>
     `;
@@ -5210,7 +5387,7 @@ function renderIntentionEditor(intention, entity, title, description, {
             value: slot.revealMinutes,
                 label: fieldText(locale, "revealMinutes"),
                 hint: hintText(locale, "revealMinutes"),
-                type: "number",
+                type: "text",
                 valueType: "number",
                 disabled: !(slot.visibilityEnabled && slot.visibilityType === VISIBILITY_TYPES.hidden && slot.revealType === REVEAL_TYPES.timer)
               })}
@@ -5339,7 +5516,7 @@ function renderIntentionEditor(intention, entity, title, description, {
           value: slot.revealMinutes,
           label: fieldText(locale, "revealMinutes"),
           hint: locale === "ru" ? "Минимум 1 минута." : "Minimum 1 minute.",
-          type: "number",
+          type: "text",
           valueType: "number",
           disabled: !(slot.visibilityEnabled && slot.visibilityType === VISIBILITY_TYPES.hidden && slot.revealType === REVEAL_TYPES.timer)
         })}
@@ -5818,11 +5995,60 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
     applyPendingFocus();
   }
 
+  function isUndoEvent(event) {
+    const key = `${event.key ?? ""}`.toLocaleLowerCase();
+    return (event.ctrlKey || event.metaKey)
+      && !event.altKey
+      && !event.shiftKey
+      && (key === "z" || event.code === "KeyZ");
+  }
+
+  function isRedoEvent(event) {
+    const key = `${event.key ?? ""}`.toLocaleLowerCase();
+    return (event.ctrlKey || event.metaKey)
+      && !event.altKey
+      && (
+        key === "y"
+        || event.code === "KeyY"
+        || ((key === "z" || event.code === "KeyZ") && event.shiftKey)
+      );
+  }
+
+  function handleUndoRedoShortcut(event) {
+    if (isUndoEvent(event)) {
+      event.preventDefault();
+      undoHistory();
+      return true;
+    }
+    if (isRedoEvent(event)) {
+      event.preventDefault();
+      redoHistory();
+      return true;
+    }
+
+    return false;
+  }
+
   root.addEventListener("click", handleClick);
   root.addEventListener("input", handleInput);
   root.addEventListener("change", handleInput);
   root.addEventListener("focusout", handleFocusOut);
+  root.addEventListener("beforeinput", event => {
+    if (event.inputType === "historyUndo") {
+      event.preventDefault();
+      undoHistory();
+      return;
+    }
+    if (event.inputType === "historyRedo") {
+      event.preventDefault();
+      redoHistory();
+    }
+  });
   document.addEventListener("keydown", event => {
+    if (handleUndoRedoShortcut(event)) {
+      return;
+    }
+
     if (event.key === "Escape" && state.searchableDropdown.openId) {
       closeSearchableDropdown();
       render();

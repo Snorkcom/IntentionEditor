@@ -183,6 +183,22 @@ export const STRINGS = {
         "syntheticCrewAdded": "В экспорт автоматически добавляется условие crewCount.",
         "syntheticCrewSkipped": "Предикат crewCount не требуется: заданное правило уже обеспечивает нужную строгость."
       },
+      "import": {
+        "title": "Импорт YAML/FTL",
+        "openButton": "Импорт",
+        "description": "Вставьте scenarioTemplate YAML, intentionTemplate YAML и FTL. Черновик заменится только если импорт и валидация пройдут без ошибок.",
+        "scenarioYaml": "Scenario YAML",
+        "intentionsYaml": "Intentions YAML",
+        "ftl": "FTL",
+        "button": "Проверить и импортировать",
+        "clear": "Очистить",
+        "resultOk": "Импорт выполнен",
+        "resultError": "Импорт не выполнен",
+        "success": "Сценарий импортирован в редактор.",
+        "scenarioPlaceholder": "- type: scenarioTemplate\n  id: ScenarioExample",
+        "intentionsPlaceholder": "- type: intentionTemplate\n  id: IntentionExampleOwner",
+        "ftlPlaceholder": "intentions-example-name = Название"
+      },
       "kinds": {
         "ownerDescription": "Всегда связан со слотом владельца сценария (owner).",
         "secondaryDescription": "Можно переиспользовать в нескольких второстепенных слотах."
@@ -520,6 +536,22 @@ export const STRINGS = {
         "derivedCrew": "Derived minimum crew",
         "syntheticCrewAdded": "A synthetic crewCount predicate will be added to export.",
         "syntheticCrewSkipped": "No synthetic crewCount predicate is needed because an authored rule is already strict enough."
+      },
+      "import": {
+        "title": "Import YAML/FTL",
+        "openButton": "Import",
+        "description": "Paste scenarioTemplate YAML, intentionTemplate YAML, and FTL. The current draft is replaced only after import and validation pass.",
+        "scenarioYaml": "Scenario YAML",
+        "intentionsYaml": "Intentions YAML",
+        "ftl": "FTL",
+        "button": "Validate and import",
+        "clear": "Clear",
+        "resultOk": "Import complete",
+        "resultError": "Import failed",
+        "success": "Scenario imported into the editor.",
+        "scenarioPlaceholder": "- type: scenarioTemplate\n  id: ScenarioExample",
+        "intentionsPlaceholder": "- type: intentionTemplate\n  id: IntentionExampleOwner",
+        "ftlPlaceholder": "intentions-example-name = Name"
       },
       "kinds": {
         "ownerDescription": "Always linked to the owner slot.",

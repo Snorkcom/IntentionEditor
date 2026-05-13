@@ -13,6 +13,7 @@ const sources = [
   "js/storage.js",
   "js/validation.js",
   "js/exporters.js",
+  "js/importers.js",
   "js/app.js",
   "main.js"
 ];

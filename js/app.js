@@ -31,6 +31,7 @@ import {
   normalizeDraft
 } from "./draft.js";
 import { buildExportArtifacts, getLocKeysForIntentions } from "./exporters.js";
+import { importScenarioPackage } from "./importers.js";
 import { getLocaleLabel, getLocalizedText, t } from "./i18n.js";
 import { clearDraft, loadDraft, loadLocale, loadTheme, saveDraft, saveLocale, saveTheme } from "./storage.js";
 import {
@@ -66,7 +67,8 @@ const BOOLEAN_OPTIONS = [
 
 const MODAL_TYPES = {
   rules: "rules",
-  categories: "categories"
+  categories: "categories",
+  import: "import"
 };
 
 const INTENTION_CONTENT_FIELDS = [
@@ -76,6 +78,24 @@ const INTENTION_CONTENT_FIELDS = [
   "oocInfo",
   "copyableText",
   "hiddenLabel"
+];
+
+const INTENTION_COPY_FIELDS = [
+  ...INTENTION_CONTENT_FIELDS,
+  "defaultVisibility",
+  "author",
+  "creationDate",
+  "tags",
+  "tagsInput",
+  "color",
+  "iconEnabled",
+  "iconSprite",
+  "iconState"
+];
+
+const SLOT_COPY_FIELDS = [
+  "candidatePredicates",
+  "textParameterBindings"
 ];
 
 const HISTORY_MAX_DEPTH = 100;
@@ -236,6 +256,12 @@ export function mountApp(root) {
       filter: ""
     },
     predicateValueBuffers: {},
+    importInputs: {
+      scenarioYaml: "",
+      intentionsYaml: "",
+      ftlText: ""
+    },
+    importResult: null,
     pendingFocus: null,
     modal: null,
     textareaHeights: {},
@@ -313,6 +339,7 @@ export function mountApp(root) {
       ownerKind: active.dataset.ownerKind ?? "",
       ownerUid: active.dataset.ownerUid ?? "",
       valueBuffer: active.dataset.valueBuffer ?? "",
+      importField: active.dataset.importField ?? "",
       searchableFilterId: active.dataset.searchableFilterId ?? "",
       selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
       selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null,
@@ -400,6 +427,8 @@ export function mountApp(root) {
     let selector = "";
     if (snapshot.valueBuffer) {
       selector = `[data-value-buffer="${snapshot.valueBuffer}"]`;
+    } else if (snapshot.importField) {
+      selector = `[data-import-field="${snapshot.importField}"]`;
     } else if (snapshot.searchableFilterId) {
       selector = `[data-searchable-filter-id="${snapshot.searchableFilterId}"]`;
     } else if (snapshot.entity && snapshot.field) {
@@ -885,6 +914,53 @@ export function mountApp(root) {
     }
   }
 
+  function runImportScenarioPackage() {
+    const result = importScenarioPackage({
+      scenarioYaml: state.importInputs.scenarioYaml,
+      intentionsYaml: state.importInputs.intentionsYaml,
+      ftlText: state.importInputs.ftlText,
+      locale: state.locale
+    });
+
+    if (result.errors.length > 0 || !result.draft) {
+      state.importResult = {
+        tone: "error",
+        messages: result.errors.map(error => `${error.area}: ${error.message}`)
+      };
+      render();
+      return;
+    }
+
+    const validation = validateDraft(result.draft, state.locale);
+    if (validation.errors.length > 0) {
+      state.importResult = {
+        tone: "error",
+        messages: validation.errors.map(error => `Validation: ${error.path}: ${error.message}`)
+      };
+      render();
+      return;
+    }
+
+    withMutation(() => {
+      state.draft = result.draft;
+      state.importResult = {
+        tone: "ok",
+        messages: [t(state.locale, "ui.import.success")]
+      };
+      state.categoryDropdownOpen = false;
+      state.searchableDropdown.openId = "";
+      state.searchableDropdown.filter = "";
+      state.predicateValueBuffers = {};
+      state.textareaHeights = {};
+      state.textareaScrollTops = {};
+    }, {
+      historyKey: "import-scenario-package",
+      historyForce: true,
+      preserveFocus: false,
+      actionStatus: createActionStatus(state.locale, "ui.import.success")
+    });
+  }
+
   function handleClick(event) {
     const target = event.target;
     if (!(target instanceof Element)) {
@@ -1007,6 +1083,15 @@ export function mountApp(root) {
         state.modal = null;
         render();
         return;
+      case "clear-import-fields":
+        state.importInputs = {
+          scenarioYaml: "",
+          intentionsYaml: "",
+          ftlText: ""
+        };
+        state.importResult = null;
+        render();
+        return;
       case "add-secondary-intention":
         withMutation(() => {
           const intention = createSecondaryIntention(state.locale);
@@ -1078,7 +1163,15 @@ export function mountApp(root) {
           if (!intention) {
             return;
           }
-          state.intentionClipboard = Object.fromEntries(INTENTION_CONTENT_FIELDS.map(field => [field, intention[field] ?? ""]));
+          const slot = button.dataset.entity === "owner-intention"
+            ? state.draft.ownerSlot
+            : findSlot("slot", button.dataset.slotUid);
+          state.intentionClipboard = {
+            intention: Object.fromEntries(INTENTION_COPY_FIELDS.map(field => [field, deepClone(intention[field] ?? "")])),
+            slot: slot
+              ? Object.fromEntries(SLOT_COPY_FIELDS.map(field => [field, deepClone(slot[field] ?? [])]))
+              : null
+          };
           recalculate({
             save: false,
             actionStatus: createActionStatus(state.locale, "ui.copyPaste.copied")
@@ -1097,8 +1190,21 @@ export function mountApp(root) {
             if (!intention) {
               return;
             }
-            for (const field of INTENTION_CONTENT_FIELDS) {
-              intention[field] = state.intentionClipboard[field] ?? "";
+            const sourceIntention = state.intentionClipboard.intention ?? state.intentionClipboard;
+            for (const field of INTENTION_COPY_FIELDS) {
+              if (Object.hasOwn(sourceIntention, field)) {
+                intention[field] = deepClone(sourceIntention[field]);
+              }
+            }
+            const targetSlot = button.dataset.entity === "owner-intention"
+              ? state.draft.ownerSlot
+              : findSlot("slot", button.dataset.slotUid);
+            if (targetSlot && state.intentionClipboard.slot) {
+              for (const field of SLOT_COPY_FIELDS) {
+                if (Object.hasOwn(state.intentionClipboard.slot, field)) {
+                  targetSlot[field] = deepClone(state.intentionClipboard.slot[field]);
+                }
+              }
             }
           }, {
             actionStatus: createActionStatus(state.locale, "ui.copyPaste.pasted")
@@ -1196,6 +1302,9 @@ export function mountApp(root) {
       case "download-artifact":
         downloadArtifact(button.dataset.kind);
         return;
+      case "import-scenario-package":
+        runImportScenarioPackage();
+        return;
     }
   }
 
@@ -1213,6 +1322,11 @@ export function mountApp(root) {
         target.selectionEnd ?? null
       );
       render();
+      return;
+    }
+
+    if (target.dataset.importField) {
+      state.importInputs[target.dataset.importField] = target.value;
       return;
     }
 
@@ -1283,6 +1397,7 @@ export function mountApp(root) {
               </button>
             `).join("")}
           </div>
+          <button type="button" data-action="open-modal" data-modal="${MODAL_TYPES.import}">${escapeHtml(t(state.locale, "ui.import.openButton"))}</button>
           <button type="button" data-action="reset-draft">${escapeHtml(t(state.locale, "ui.reset"))}</button>
           <span class="version">v${APP_VERSION}</span>
         </div>
@@ -1358,6 +1473,51 @@ export function mountApp(root) {
           ${renderStatusPanel()}
           ${renderIssuePanel()}
         </div>
+      </section>
+    `;
+  }
+
+  function renderImportPanel() {
+    const result = state.importResult;
+    return `
+      <section class="import-section">
+        <div class="section-header">
+          <div>
+            <p>${escapeHtml(t(state.locale, "ui.import.description"))}</p>
+          </div>
+          <button type="button" data-action="import-scenario-package">${escapeHtml(t(state.locale, "ui.import.button"))}</button>
+        </div>
+        <div class="preview-grid import-grid">
+          <label class="field">
+            <span>${escapeHtml(t(state.locale, "ui.import.scenarioYaml"))}</span>
+            <textarea
+              rows="14"
+              data-import-field="scenarioYaml"
+              placeholder="${escapeHtml(t(state.locale, "ui.import.scenarioPlaceholder"))}">${escapeHtml(state.importInputs.scenarioYaml)}</textarea>
+          </label>
+          <label class="field">
+            <span>${escapeHtml(t(state.locale, "ui.import.intentionsYaml"))}</span>
+            <textarea
+              rows="14"
+              data-import-field="intentionsYaml"
+              placeholder="${escapeHtml(t(state.locale, "ui.import.intentionsPlaceholder"))}">${escapeHtml(state.importInputs.intentionsYaml)}</textarea>
+          </label>
+          <label class="field">
+            <span>${escapeHtml(t(state.locale, "ui.import.ftl"))}</span>
+            <textarea
+              rows="14"
+              data-import-field="ftlText"
+              placeholder="${escapeHtml(t(state.locale, "ui.import.ftlPlaceholder"))}">${escapeHtml(state.importInputs.ftlText)}</textarea>
+          </label>
+        </div>
+        ${result ? `
+          <div class="import-result import-result-${escapeHtml(result.tone)}">
+            <strong>${escapeHtml(result.tone === "ok" ? t(state.locale, "ui.import.resultOk") : t(state.locale, "ui.import.resultError"))}</strong>
+            <ul>
+              ${result.messages.map(message => `<li>${escapeHtml(message)}</li>`).join("")}
+            </ul>
+          </div>
+        ` : ""}
       </section>
     `;
   }
@@ -1909,7 +2069,8 @@ function renderIntentionEditor(intention, entity, title, description, {
               type="button"
               data-action="copy-intention-content"
               data-entity="${entity}"
-              data-uid="${uid}">
+              data-uid="${uid}"
+              data-slot-uid="${slotUid}">
               ${escapeHtml(t(locale, "ui.copyPaste.copy"))}
             </button>
             <button
@@ -1917,6 +2078,7 @@ function renderIntentionEditor(intention, entity, title, description, {
               data-action="paste-intention-content"
               data-entity="${entity}"
               data-uid="${uid}"
+              data-slot-uid="${slotUid}"
               ${state.intentionClipboard ? "" : "disabled"}>
               ${escapeHtml(t(locale, "ui.copyPaste.paste"))}
             </button>
@@ -2539,6 +2701,23 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
       `;
     }
 
+    if (state.modal === MODAL_TYPES.import) {
+      return `
+        <div class="modal-backdrop">
+          <div class="modal-card modal-card-wide import-modal-card" data-modal-card="true" role="dialog" aria-modal="true">
+            <div class="modal-header">
+              <h2>${escapeHtml(t(state.locale, "ui.import.title"))}</h2>
+              <div class="button-row">
+                <button type="button" data-action="clear-import-fields">${escapeHtml(t(state.locale, "ui.import.clear"))}</button>
+                <button type="button" data-action="close-modal">${escapeHtml(t(state.locale, "ui.close"))}</button>
+              </div>
+            </div>
+            ${renderImportPanel()}
+          </div>
+        </div>
+      `;
+    }
+
     return "";
   }
 
@@ -2624,7 +2803,7 @@ function renderSlotEditor(slot, ownerKind, title, description, canDelete = false
             <h2>${escapeHtml(t(state.locale, "ui.sections.secondarySlots"))}</h2>
             <p>${escapeHtml(t(state.locale, "ui.sectionDescriptions.secondarySlots"))}</p>
           </div>
-          <button type="button" data-action="add-slot">${escapeHtml(buttonText(state.locale, "addSecondarySlot"))}</button>
+          <button type="button" class="button-prominent" data-action="add-slot">${escapeHtml(buttonText(state.locale, "addSecondarySlot"))}</button>
         </div>
         ${state.draft.secondarySlots.length === 0
           ? `<p class="muted-text">${escapeHtml(t(state.locale, "ui.noSecondaryPairs"))}</p>`

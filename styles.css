@@ -90,6 +90,18 @@ button:hover:not(:disabled) {
   color: var(--accent);
 }
 
+.button-prominent {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
+  background: color-mix(in srgb, var(--accent) 18%, var(--panel-3));
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.button-prominent:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 26%, var(--panel-3));
+}
+
 button:disabled {
   opacity: 0.48;
   cursor: not-allowed;
@@ -882,6 +894,35 @@ code {
   font-size: 12px;
 }
 
+.import-grid textarea {
+  min-height: 260px;
+}
+
+.import-result {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+}
+
+.import-result ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.import-result-ok {
+  border-color: color-mix(in srgb, var(--ok) 45%, var(--line));
+}
+
+.import-result-error {
+  border-color: color-mix(in srgb, var(--error) 45%, var(--line));
+}
+
 .color-field {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);
@@ -918,6 +959,10 @@ code {
 
 .modal-card-wide {
   width: min(1180px, 96vw);
+}
+
+.import-modal-card {
+  width: min(1280px, 96vw);
 }
 
 .modal-header {
